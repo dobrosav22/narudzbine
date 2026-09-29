@@ -664,7 +664,7 @@ What:
   2. Otherwise a guest choice from the language picker on the auth screens (localStorage on web, AsyncStorage on mobile).
   3. Otherwise the browser or device language (`navigator.languages` / expo-localization). [assumed] `sr`, `bs`, `hr`, `sh` and `cnr` map to `sr-Latn`; anything else is English.
 - **Switcher**: text labels "English" / "Srpski", no flags.
-  - Web: a Language card on Account → Profile (all roles; admins use the auth-page picker before login) and a select on the login, register and invite pages.
+  - Web: a Language card on Account → Profile for vendors and buyers, a Language submenu in the Platform Admin's user menu (the admin has no profile page), and a select on the login, register and invite pages.
   - Mobile: a "Language" section in the Account tab and chips on the login screen.
   - Switching calls **`services.preferences.updateLocale`** (03 v1.1, `PATCH /vendor-users/:id/preferences` / `/buyer-users/…` in 04) for every user record of the person, then refreshes the session. [assumed] 04 lists no endpoint for the admin, so `userType: 'admin'` is ours.
   - The new real stub means 95 methods now fail loudly.
@@ -699,7 +699,7 @@ Checks:
   - every key named in core, or passed as a literal to `countMsg`/`msg`/`{ key }` in either app, exists
 - Also new: a `statusLabel` test and a register-in-Serbian test. **96 core tests.**
 - **e2e**:
-  - Web, 62 flows (3 new): guest switches the login page to Srpski and it survives a reload; Stefan works in Serbian, with money still as "KM" and CleanPro's own statuses untranslated; switching to English on Profile is kept on the next login; a vendor registered in Serbian gets a Serbian account.
+  - Web, 63 flows (4 new): guest switches the login page to Srpski and it survives a reload; Stefan works in Serbian, with money still as "KM" and CleanPro's own statuses untranslated; switching to English on Profile is kept on the next login; a vendor registered in Serbian gets a Serbian account; the admin switches language from the user menu.
   - Mobile, 40 flows (3 new): the same guest and Stefan flows, plus Ana's starter statuses in Serbian.
   - One existing web assertion changed: "1 items in cart" is now "1 item in cart".
   - A mobile stats flow was hardened: it grabbed location chips before they loaded, and failed once.
