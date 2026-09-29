@@ -1,0 +1,13 @@
+{
+  "name": "e2e",
+  "private": true,
+  "type": "module",
+  "description": "Browser flow tests (puppeteer-core + an installed Chrome; no browser download). Run against a production build with mocks ON.",
+  "scripts": {
+    "web": "node web.mjs",
+    "mobile": "node mobile.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0"
+  }
+}

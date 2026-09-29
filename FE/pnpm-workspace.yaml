@@ -1,0 +1,16 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "e2e"
+
+# Carried over from create-next-app: these ship prebuilt binaries, no postinstall needed.
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
+
+# One React type tree for the whole workspace, matching the React 19.2 runtime both
+# apps use. Without this, Next's peer resolved to a different copy than apps/web's
+# and standalone tsc failed (BUILD_LOG 2026-09-27).
+overrides:
+  "@types/react": "~19.2.18"
+  "@types/react-dom": "~19.2.3"

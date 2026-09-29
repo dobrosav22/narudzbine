@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_USE_MOCKS": "true",
+        "EXPO_PUBLIC_CURRENCY": "BAM",
+        "EXPO_PUBLIC_LOCALE": "bs-BA"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_USE_MOCKS": "false",
+        "EXPO_PUBLIC_CURRENCY": "BAM",
+        "EXPO_PUBLIC_LOCALE": "bs-BA"
+      }
+    }
+  }
+}

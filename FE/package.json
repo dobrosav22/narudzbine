@@ -1,0 +1,19 @@
+{
+  "name": "narudzbine-fe",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:mobile": "turbo run dev --filter=mobile",
+    "test": "turbo run test",
+    "verify:real-stubs": "pnpm --filter @repo/core verify:real-stubs"
+  },
+  "packageManager": "pnpm@10.17.0",
+  "devDependencies": {
+    "turbo": "^2.11.4",
+    "typescript": "^5.9.3"
+  }
+}

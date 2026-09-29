@@ -1,0 +1,16 @@
+{
+  "name": "@repo/ui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Design tokens (docs/05) and the shared Tailwind preset both apps extend. Tokens only — no shared JSX.",
+  "main": "./index.cjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.cjs"
+    },
+    "./tailwind-preset": "./tailwind-preset.cjs",
+    "./tokens": "./tokens.cjs"
+  }
+}
