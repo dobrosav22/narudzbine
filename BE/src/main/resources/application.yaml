@@ -1,0 +1,89 @@
+spring:
+  servlet:
+    multipart:
+      enabled: false
+  application:
+    name: narudzbine-backend
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 32
+      minimum-idle: 2
+      connection-timeout: 2000
+      validation-timeout: 1000
+      max-lifetime: 1500000
+      connection-init-sql: "SET statement_timeout = '5s'; SET lock_timeout = '2s'; SET TIME ZONE 'UTC'"
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: false
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+server:
+  port: ${PORT:10000}
+  shutdown: graceful
+  forward-headers-strategy: none
+  tomcat:
+    threads:
+      max: 50
+    accept-count: 50
+management:
+  server:
+    port: ${MANAGEMENT_PORT:9091}
+    address: 127.0.0.1
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,schemaReadiness,recoveryContainment
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    org.hibernate.SQL: OFF
+    org.hibernate.orm.jdbc.bind: OFF
+    org.springframework.web: WARN
+    com.zaxxer.hikari: WARN
+
+reporting:
+  exports:
+    enabled: ${REPORTING_EXPORTS_ENABLED:false}
+    artifact-key: ${REPORTING_EXPORTS_ARTIFACT_KEY:}
+    accepting: ${REPORTING_EXPORTS_ACCEPTING:true}
+
+privacy:
+  exports:
+    enabled: ${PRIVACY_EXPORTS_ENABLED:false}
+    worker-enabled: ${PRIVACY_EXPORTS_WORKER_ENABLED:false}
+    accepting: ${PRIVACY_EXPORTS_ACCEPTING:true}
+    artifact-key: ${PRIVACY_EXPORTS_ARTIFACT_KEY:}
+    jdbc-url: ${PRIVACY_EXPORTS_JDBC_URL:}
+    username: ${PRIVACY_EXPORTS_USERNAME:}
+    password: ${PRIVACY_EXPORTS_PASSWORD:}
+
+audit:
+  archive:
+    enabled: ${AUDIT_ARCHIVE_ENABLED:false}
+
+  redaction-preview:
+    enabled: ${AUDIT_REDACTION_PREVIEW_ENABLED:false}
+
+  redaction-plans:
+    enabled: ${AUDIT_REDACTION_PLANS_ENABLED:false}

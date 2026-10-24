@@ -708,3 +708,15 @@ Checks:
 - **Still unverified**: plural selection on a real Android device. The polyfill covers a missing `Intl.PluralRules`, but only the web export and Node have run it.
 
 How to add text: add the key to **both** JSON files. Use `useTranslations`/`useMsg` (web) or `useT`/`useMsg` (mobile). Pass numbers as `countText` (plus `count` for plurals) and never build a sentence by concatenating translated pieces. `pnpm test` catches a missing or mismatched key.
+
+### 2026-10-12 — Backend planning approval policy clarified
+
+What: The user explicitly approved clarification of `FE/CLAUDE.md`: backend decisions and business-rule conflicts follow the root `AGENTS.md` approval policy. Historical frontend guidance and earlier log entries are preserved. See `../DECISIONS.md` D-GOV-001 and `../PROJECT_STATUS.md`.
+Why: Historical log precedence must not silently turn frontend mock assumptions into approved backend requirements. The project is in PLANNING; the user has not approved a planning revision or authorized application implementation.
+Affects: Interpretation of the historical precedence rule for backend planning and business-rule conflicts. No frontend or backend application code changed, and no application tests/builds were run for this documentation update.
+
+### 2026-10-15 — Remaining backend choices delegated; AI operating expectation recorded
+
+What: The user delegated all remaining recommendations and stated that approximately 99% of future development and DevOps will be performed by AI. Root D-GOV-005/006 supersede routine per-choice interviews; FE/CLAUDE.md's scoped governance clarification now reflects that policy. The historical frontend guidance and previous log entries are preserved.
+Why: Future sessions should select/document remaining backend and infrastructure choices without reviving routine questionnaires, while preserving confirmed business requirements and the separate implementation approval gate.
+Affects: Root planning/instructions and ../AI_OPERATIONS.md; frontend implementation ownership is unchanged. The assistant adopted pending Batch 44 A recommendations under delegation, not as individual user answers. No application code, dependencies, provisioning or deployment changed; no application tests/builds were run.

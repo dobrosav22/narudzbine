@@ -1,0 +1,13 @@
+# Local backend tooling and generated build evidence
+/.tools/
+/BE/target/
+/BE/.maven-user-home/
+/BE/.idea/
+/BE/*.iml
+/BE/.env
+/BE/.env.*
+!/BE/.env.example
+
+# Python operator-tool bytecode
+__pycache__/
+*.pyc

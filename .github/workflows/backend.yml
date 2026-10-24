@@ -1,0 +1,69 @@
+name: Backend verification
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 1 * *"
+  pull_request:
+    paths: ["BE/**", "openapi.yaml", ".github/workflows/backend.yml"]
+  push:
+    branches: [main, "codex/**"]
+    paths: ["BE/**", "openapi.yaml", ".github/workflows/backend.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "25.0.4.1+1"
+          cache: maven
+          cache-dependency-path: BE/pom.xml
+      - name: Verify backend (Docker is required)
+        working-directory: BE
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp -s .mvn/settings.xml "-Dproject.build.outputTimestamp=$(git show -s --format=%cI HEAD)" verify
+          ./mvnw -B -ntp -s .mvn/settings.xml help:effective-pom -Doutput=target/effective-pom.xml
+          ./mvnw -B -ntp -s .mvn/settings.xml dependency:tree -DoutputFile=target/dependency-tree.txt
+      - name: Verify synthetic local developer API and JSON worker
+        run: python3 BE/operations/local_development.py check
+      - name: Assemble verified artifact
+        run: docker build --platform linux/amd64 -t narudzbine-backend:ci BE
+      - name: Install verified scanner
+        run: |
+          curl --fail --location --retry 3 -o /tmp/trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.76.0/trivy_0.76.0_Linux-64bit.tar.gz
+          echo 'e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7  /tmp/trivy.tar.gz' | sha256sum --check
+          mkdir -p /tmp/narudzbine-trivy
+          tar -xzf /tmp/trivy.tar.gz -C /tmp/narudzbine-trivy trivy
+      - name: Security gates
+        run: |
+          result=0
+          /tmp/narudzbine-trivy/trivy filesystem --offline-scan --scanners secret --skip-dirs BE/target --exit-code 1 --format json --output /tmp/backend-secrets.json BE || result=1
+          /tmp/narudzbine-trivy/trivy sbom --exit-code 1 --severity HIGH,CRITICAL --format json --output BE/target/dependency-vulnerabilities.json BE/target/bom.json || result=1
+          /tmp/narudzbine-trivy/trivy image --scanners vuln --exit-code 1 --severity HIGH,CRITICAL --format json --output BE/target/container-vulnerabilities.json narudzbine-backend:ci || result=1
+          exit "$result"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: backend-verification
+          path: |
+            BE/target/surefire-reports/
+            BE/target/failsafe-reports/
+            BE/target/bom.json
+            BE/target/effective-pom.xml
+            BE/target/dependency-tree.txt
+            BE/target/dependency-vulnerabilities.json
+            BE/target/container-vulnerabilities.json
+            BE/target/recovery-contained-restore-evidence.json
+            BE/target/local-development-*.json
+            BE/native/bom.json
+          retention-days: 14

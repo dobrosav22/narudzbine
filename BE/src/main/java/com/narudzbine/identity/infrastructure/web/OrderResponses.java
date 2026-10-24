@@ -1,0 +1,8 @@
+package com.narudzbine.identity.infrastructure.web;
+import com.narudzbine.ordering.api.*;
+import com.narudzbine.shared.api.ResourceRevisions;
+import java.util.UUID;
+final class OrderResponses {
+ static OrdersController.Result response(Orders orders,ResourceRevisions revisions,Orders.Snapshot order,UUID organization,boolean original){var terms=OrderReviewsController.result(order.terms());boolean own=order.buyer().organizationId().equals(organization);String at=AccountResponses.time(order.submittedAt());return new OrdersController.Result(order.id(),(original?order.originalRevision():revisions.encode("order/v1",order.id(),order.revision())),order.number(),order.vendor(),order.buyer(),order.state(),order.stage()==null?null:order.stage().id(),terms.lines(),terms.currency(),"NET_EXCLUDING_VAT",terms.goodsTotal(),terms.deliveryAddress(),terms.deliveryContact(),terms.deliveryInstructions(),fulfillment(order.fulfillment()),order.terms().intent().note(),own?order.submittedByAccountId():null,order.terms().intent().replacementForOrderId(),order.cancellationRequestId(),at,AccountResponses.time(order.updatedAt()==null?order.submittedAt():order.updatedAt()),order.stage()==null?null:original?order.stage().name():orders.currentStageName(order.vendor().organizationId(),order.stage().id()),own?order.submittedByDisplayName():null);}
+ private static LocationController.Result fulfillment(Orders.Fulfillment f){if(f==null){return null;}var l=f.location();return new LocationController.Result(l.id(),f.revision(),l.name(),l.address(),l.contact(),l.instructions(),l.state(),AccountResponses.time(l.createdAt()),AccountResponses.time(l.updatedAt()));}
+}

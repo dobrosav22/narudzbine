@@ -1,0 +1,14 @@
+-- Retain one successful direct replacement forever; cancellation does not free the slot.
+CREATE TABLE order_replacement(predecessor_id uuid PRIMARY KEY REFERENCES purchase_order(id),successor_id uuid NOT NULL UNIQUE REFERENCES purchase_order(id),buyer_id uuid NOT NULL REFERENCES organization(id),vendor_id uuid NOT NULL REFERENCES organization(id),actor_id uuid NOT NULL REFERENCES account_identity(id),created_at timestamptz(3) NOT NULL,CHECK(predecessor_id<>successor_id));
+CREATE TRIGGER tr_order_replacement_immutable BEFORE UPDATE OR DELETE ON order_replacement FOR EACH ROW EXECUTE FUNCTION protect_audit_event();
+CREATE FUNCTION guard_order_replacement() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM purchase_order p JOIN purchase_order c ON c.id=NEW.successor_id JOIN order_review r ON r.id=c.review_id WHERE p.id=NEW.predecessor_id AND p.buyer_id=NEW.buyer_id AND p.vendor_id=NEW.vendor_id AND c.buyer_id=p.buyer_id AND c.vendor_id=p.vendor_id AND c.country=p.country AND c.submitted_by=NEW.actor_id AND c.submitted_at=NEW.created_at AND(SELECT state FROM purchase_order_event WHERE order_id=p.id ORDER BY revision DESC LIMIT 1)='CANCELLED' AND NEW.created_at>=(SELECT created_at FROM purchase_order_event WHERE order_id=p.id ORDER BY revision DESC LIMIT 1) AND(c.snapshot#>>'{terms,intent,replacementForOrderId}')::uuid=p.id AND(r.original_intent->>'replacementForOrderId')::uuid=p.id) THEN RAISE EXCEPTION 'Invalid replacement source/review';END IF;RETURN NEW;END $$;
+CREATE TRIGGER tr_order_replacement_scope BEFORE INSERT ON order_replacement FOR EACH ROW EXECUTE FUNCTION guard_order_replacement();
+CREATE FUNCTION validate_order_replacement_complete() RETURNS trigger LANGUAGE plpgsql AS $$ DECLARE predecessor uuid;review_predecessor uuid;BEGIN
+ predecessor:=(NEW.snapshot#>>'{terms,intent,replacementForOrderId}')::uuid;SELECT(r.original_intent->>'replacementForOrderId')::uuid INTO review_predecessor FROM order_review r WHERE r.id=NEW.review_id;
+ IF predecessor IS DISTINCT FROM review_predecessor THEN RAISE EXCEPTION 'Replacement intent must match actual review';END IF;
+ IF predecessor IS NULL THEN
+  IF EXISTS(SELECT 1 FROM order_replacement WHERE successor_id=NEW.id) THEN RAISE EXCEPTION 'Unexpected replacement link';END IF;
+ ELSIF NOT EXISTS(SELECT 1 FROM order_replacement l WHERE l.predecessor_id=predecessor AND l.successor_id=NEW.id AND l.buyer_id=NEW.buyer_id AND l.vendor_id=NEW.vendor_id AND l.actor_id=NEW.submitted_by AND l.created_at=NEW.submitted_at) THEN RAISE EXCEPTION 'Replacement link missing';END IF;RETURN NULL;END $$;
+CREATE CONSTRAINT TRIGGER ct_order_replacement_complete AFTER INSERT ON purchase_order DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION validate_order_replacement_complete();
+UPDATE backend_schema_version SET version=44 WHERE id=1;

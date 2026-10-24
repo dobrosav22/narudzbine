@@ -1,5 +1,22 @@
 # Project memory — read in full before doing any work
 
+## Backend planning and business-rule approval (2026-10-12)
+
+The [root project instructions](../AGENTS.md) govern project phase, backend
+decisions, and business-rule approval. The build-log precedence rule below
+records historical frontend implementation guidance only: it does not approve
+backend behavior or resolve business-rule conflicts. Mocks, logs, and previous
+proposals are evidence. Under the user's 2026-10-15 delegation (D-GOV-005),
+the backend/infrastructure assistant chooses and records remaining recommendations
+without routine questionnaires. Existing approved requirements still govern;
+escalate only indispensable missing facts or irreconcilable requirement conflicts.
+This supersedes the earlier ask-every-choice rule, not frontend ownership.
+Application implementation awaits
+explicit planning-package approval and authorization. See
+[D-GOV-001](../DECISIONS.md#d-gov-001) for the user's approved clarification.
+See [AI operations](../AI_OPERATIONS.md) for the expected AI-led backend and
+infrastructure workflow. Historical frontend guidance below remains scoped to FE.
+
 This is a frontend-only build. The backend lives in `../BE/` and is out of
 scope — build against the mocked service layer described below, never
 against a real network call.

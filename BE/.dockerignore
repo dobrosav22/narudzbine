@@ -1,0 +1,6 @@
+**
+!Dockerfile
+!native/
+!native/**
+!target/
+!target/narudzbine-backend-0.1.0-SNAPSHOT.jar

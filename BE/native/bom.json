@@ -1,0 +1,272 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "narudzbine-native-processing",
+      "version": "7.1.2-34"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "ImageMagick",
+      "version": "7.1.2-34",
+      "purl": "pkg:generic/ImageMagick@7.1.2-34",
+      "cpe": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-34:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "id": "ImageMagick"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "source.archive.sha256",
+          "value": "55fe0ec246245b46c429f9e6bc65294ad4a78a66b88abd9817971ca157856323"
+        },
+        {
+          "name": "license.path",
+          "value": "/opt/magick/share/doc/ImageMagick-7/LICENSE"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-34/ImageMagick-7.1.2-34.tar.xz"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libc6",
+      "version": "2.39-0ubuntu8.9",
+      "purl": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPL-2.1-or-later; additional package notices retained"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libc6/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libgcc-s1",
+      "version": "14.2.0-4ubuntu2~24.04.1",
+      "purl": "pkg:deb/ubuntu/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "GPL-3.0-or-later WITH GCC-exception-3.1; additional package notices retained"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libgcc-s1/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libstdc++6",
+      "version": "14.2.0-4ubuntu2~24.04.1",
+      "purl": "pkg:deb/ubuntu/libstdc++6@14.2.0-4ubuntu2~24.04.1?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "GPL-3.0-or-later WITH GCC-exception-3.1; additional package notices retained"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libstdc++6/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libseccomp2",
+      "version": "2.5.5-1ubuntu3.1",
+      "purl": "pkg:deb/ubuntu/libseccomp2@2.5.5-1ubuntu3.1?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPL-2.1"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libseccomp2/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libjpeg-turbo8",
+      "version": "2.1.5-2ubuntu2",
+      "purl": "pkg:deb/ubuntu/libjpeg-turbo8@2.1.5-2ubuntu2?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-clause; BSD-BY-LC-NE; Expat; NTP; Zlib"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libjpeg-turbo8/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libpng16-16t64",
+      "version": "1.6.43-5ubuntu0.7",
+      "purl": "pkg:deb/ubuntu/libpng16-16t64@1.6.43-5ubuntu0.7?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "libpng; Apache-2.0; BSD-3-clause; BSD-like-with-advertising-clause; expat; GPL-2+ (package notice inventory, not a claim that all apply to linked code)"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libpng16-16t64/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libwebp7",
+      "version": "1.3.2-0.4build3",
+      "purl": "pkg:deb/ubuntu/libwebp7@1.3.2-0.4build3?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-Clause; Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libwebp7/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libwebpmux3",
+      "version": "1.3.2-0.4build3",
+      "purl": "pkg:deb/ubuntu/libwebpmux3@1.3.2-0.4build3?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-Clause; Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libwebpmux3/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libwebpdemux2",
+      "version": "1.3.2-0.4build3",
+      "purl": "pkg:deb/ubuntu/libwebpdemux2@1.3.2-0.4build3?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-Clause; Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libwebpdemux2/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libsharpyuv0",
+      "version": "1.3.2-0.4build3",
+      "purl": "pkg:deb/ubuntu/libsharpyuv0@1.3.2-0.4build3?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-Clause; Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/libsharpyuv0/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "liblcms2-2",
+      "version": "2.14-2ubuntu0.1",
+      "purl": "pkg:deb/ubuntu/liblcms2-2@2.14-2ubuntu0.1?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT; GPL-2+; GPL-3; IJG (package notice inventory, not a claim that all apply to linked code)"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/liblcms2-2/copyright"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "zlib1g",
+      "version": "1:1.3.dfsg-3.1ubuntu2.2",
+      "purl": "pkg:deb/ubuntu/zlib1g@1:1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04",
+      "licenses": [
+        {
+          "license": {
+            "name": "Zlib"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "license.path",
+          "value": "/usr/share/doc/zlib1g/copyright"
+        }
+      ]
+    }
+  ]
+}

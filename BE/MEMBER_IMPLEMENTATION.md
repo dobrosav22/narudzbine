@@ -1,0 +1,15 @@
+# VS-01 member lifecycle
+
+2026-10-18. Batch scope: listMembers, changeMemberRole, deactivateMember, reactivateMember. Implemented and locally verified; see [executed evidence](MEMBER_VERIFICATION.md). VS-01 remains in progress.
+
+## Refinements selected before implementation
+
+Under D-GOV-005, preserve D-ORG-018/019/046/047/048 and the fixed role matrix. Only the owner changes ADMIN/STAFF roles; owner targets cannot be changed/deactivated through these endpoints. Owner may deactivate nonowners, admin may deactivate staff, and staff may deactivate themselves. Admin self-deactivation still requires the owner. Only owner may reactivate a former admin; owner/admin may reactivate former staff. Keep the inactive role until reactivation so this check cannot be bypassed; role edits require ACTIVE state. Reactivation changes the same account to ACTIVE/STAFF, preserves identity/preferences/history, and requires a separate promotion for elevated access. Pending setup accounts cannot be managed here.
+
+Commands require the target account revision, checked before no-op detection; stale requests return the authorized current account revision. Actual role/state changes increment account revision and security epoch, revoke all target sessions and produce minimal atomic member audit. No-op commands preserve these values. Revoking on role reduction is a delegated conservative choice as well as the mandatory revocation on elevation; no replacement secret is returned. Reactivation never revives old sessions or pre-deactivation proofs. Refetch current members after response loss; self-deactivation invalidates the initiating session, so another authorized member must reactivate the account.
+
+Acquire the organization exclusive guard, then actor/accessible target account identities in UUID order before authenticating/locking the actor session. Recheck current role and target state under this guard; foreign targets must never be prelocked. Record qualifying activity in the same transaction before a possible self-deactivation; roll it back if the command fails. Member list rows/totals use one statement snapshot, with state/role filters and the established bounded offset pagination.
+
+Correction to the previous next-action wording: DESIGN_SPEC section9 and R-SEC-016 require security notices for credential/recovery/ownership events, not ordinary member role/deactivation/reactivation events. This batch therefore adds no invented notice event or empty delivery subsystem. Transactional outbox producers remain required with the actual credential/security-notice workflows. No owner-transfer requests exist yet; future transfer acceptance/proof records must bind the recipient security epoch so deactivation immediately invalidates them and reactivation cannot revive them (R-ORG-051). No pending-transfer integration is claimed here.
+
+Schema12 adds member audit actions; the existing organization/member unique index is reused. Existing runtime DML grants suffice; no provider call/provisioning is required. Default activation remains off. Required schema migration/startup and current real-HTTP verification will be recorded in MEMBER_VERIFICATION.md.

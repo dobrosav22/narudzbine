@@ -1,0 +1,13 @@
+# Session payload retention — selected 2026-10-21
+
+Delegated refinement under D-GOV-005 for the existing thirty-day session retention rule (DESIGN_SPEC section 10; R-SEC-011). This is technical credential/metadata expiry, not commercial or legal-case fulfillment.
+
+Retain an immutable minimal session ID/account binding, backfilled only from actual session rows. Original credential-operation and OAuth references point to that binding; it never authenticates a request. New session insertion reserves its ID atomically and cannot reuse a retired ID. New session-dependent operations still require a live same-account session. Migration rejects inconsistent historical account bindings rather than inventing them.
+
+An internal worker deletes at most 1,000 live payload rows, ordered by effective end then ID, using row locks with SKIP LOCKED. Effective end is the earliest absolute expiry, revocation or exact idle expiry (business 168 elapsed hours; platform administrator 30 minutes). The injected UTC millisecond clock supplies the thirty-elapsed-day cutoff. Recent or unfinished referenced credential operations and recent/CLAIMED OAuth challenges defer deletion. An operation that currently holds the session row makes cleanup skip it. Authentication, refresh and device authorization continue to require the live payload; a clock rollback cannot restore it.
+
+The existing BEFORE DELETE trigger disables enabled push devices and clears their encrypted token while the source session still exists. That change and payload deletion commit or roll back together; retained installation/token ownership prevents reassignment. Devices can later bind to a newly authenticated same-account session through the normal registration flow.
+
+Run as an independent ten-second REQUIRES_NEW maintenance job every minute. Fixed SQL, narrow table grants and an aggregate read-only preview; permission failure defers this job without rolling back other maintenance. No new API, ordinary account deletion, legal hold fulfillment or external provider activation. Minimal identity/source/audit records remain for reconciliation; inbox/delivery metadata and remaining OAuth/recovery token classes are separate work.
+
+Verify exact cutoffs and idle windows, permanent ID reservation, original references/account integrity, pending/recent exclusions, bounded convergence, concurrent workers and live locks, transaction rollback with device invalidation, narrow privileges, populated64 migration/repeat, real HTTP credential rejection and independent maintenance failure. Full wrapper and change-triggered packaged migration/artifact checks remain required before claiming completion.

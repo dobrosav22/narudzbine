@@ -1,0 +1,21 @@
+package com.narudzbine.audit.infrastructure;
+import static org.assertj.core.api.Assertions.*;
+import java.time.Clock;
+import java.util.Base64;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.*;
+import org.springframework.mock.env.MockEnvironment;
+import com.narudzbine.shared.api.UuidGenerator;
+class AuditArchiveConfigurationTest {
+ private final ApplicationContextRunner context=new ApplicationContextRunner().withUserConfiguration(AuditArchiveConfiguration.class,Fixture.class);
+ @Test void defaultOffHasNoPoolStorageOrWorker(){context.run(c->{assertThat(c).hasNotFailed();assertThat(c).doesNotHaveBean(AuditArchiveConfiguration.Runtime.class);assertThat(c).doesNotHaveBean(javax.sql.DataSource.class);});}
+ @Test void enabledWithoutConfigurationFailsBeforeAnyConnection(){context.withPropertyValues("audit.archive.enabled=true").run(c->assertThat(c).hasFailed().getFailure().hasRootCauseMessage("Explicit isolated audit archive configuration required"));}
+ private MockEnvironment valid(){return new MockEnvironment().withProperty("audit.archive.policy-id","019a0c10-0000-7000-8000-000000000001").withProperty("audit.archive.configuration-reference","SYNTHETIC-TEST").withProperty("audit.archive.jdbc-url","jdbc:postgresql://example.invalid/local").withProperty("spring.datasource.url","jdbc:postgresql://example.invalid/local").withProperty("spring.datasource.username","runtime").withProperty("audit.archive.username","archive").withProperty("audit.archive.password","synthetic").withProperty("audit.archive.active-key-version","v1").withProperty("audit.archive.key-ring","{\"v1\":\""+Base64.getEncoder().encodeToString(new byte[32])+"\"}").withProperty("audit.archive.mode","LOCAL_SYNTHETIC").withProperty("audit.archive.local-root","unused").withProperty("audit.archive.local-synthetic-acknowledged","true");}
+ @Test void explicitSyntheticModeValidatesWithoutOpeningStore(){assertThat(AuditArchiveConfiguration.Settings.read(valid()).mode).isEqualTo("LOCAL_SYNTHETIC");}
+ @Test void keyParserNeverDisclosesSecretsAndRejectsAliasMissingAndWrongLength(){for(String ring:new String[]{"PRIVATE-SENTINEL", "{}","{\"v1\":\"PRIVATE-SENTINEL\"}","{\"v1\":\""+Base64.getEncoder().encodeToString(new byte[32])+"\",\"v2\":\""+Base64.getEncoder().encodeToString(new byte[32])+"\"}"})assertThatThrownBy(()->AuditArchiveConfiguration.Settings.read(valid().withProperty("audit.archive.key-ring",ring))).isInstanceOf(IllegalStateException.class).hasMessage("Explicit isolated audit archive configuration required").hasNoCause();}
+ @Test void rejectsArtifactKeyReuseAndApplicationDatabaseCredential(){assertThatThrownBy(()->AuditArchiveConfiguration.Settings.read(valid().withProperty("privacy.exports.artifact-key",Base64.getEncoder().encodeToString(new byte[32])))).isInstanceOf(IllegalStateException.class);assertThatThrownBy(()->AuditArchiveConfiguration.Settings.read(valid().withProperty("audit.archive.username","runtime"))).isInstanceOf(IllegalStateException.class);}
+ @Test void localModeNeedsExplicitSyntheticAcknowledgement(){assertThatThrownBy(()->AuditArchiveConfiguration.Settings.read(valid().withProperty("audit.archive.local-synthetic-acknowledged","false"))).isInstanceOf(IllegalStateException.class);}
+ @Test void r2RequiresEuAndIndependentCredentialAndConformanceReference(){var env=valid().withProperty("audit.archive.mode","R2").withProperty("audit.archive.endpoint","https://"+"a".repeat(32)+".eu.r2.cloudflarestorage.com").withProperty("audit.archive.bucket","independent-evidence").withProperty("audit.archive.access-key","synthetic-access").withProperty("audit.archive.secret-key","synthetic-secret");assertThatThrownBy(()->AuditArchiveConfiguration.Settings.read(env)).isInstanceOf(IllegalStateException.class);env.withProperty("audit.archive.conformance-reference","SYNTHETIC-CONFORMANCE");assertThat(AuditArchiveConfiguration.Settings.read(env).mode).isEqualTo("R2");assertThatThrownBy(()->AuditArchiveConfiguration.Settings.read(env.withProperty("media.storage.access-key","synthetic-access"))).isInstanceOf(IllegalStateException.class);}
+ @Configuration(proxyBeanMethods=false) static class Fixture {@Bean Clock clock(){return Clock.systemUTC();}@Bean UuidGenerator ids(Clock c){return new UuidGenerator(c);}}
+}

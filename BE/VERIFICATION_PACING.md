@@ -1,0 +1,18 @@
+# Fixture connection reuse — selected 2026-10-21
+
+Delegated verification refinement under D-GOV-005/D-GOV-006 and AI_OPERATIONS implementation cadence. Apply only after schema65 frozen verification completes. Reuse the already resolved HikariCP7.0.2 dependency for AuthHttpIT owner/fixture queries, retaining the same real PostgreSQL18.6, application runtime role, fixture transaction manager and every scenario. No application source/schema/contract/dependency or application pool change; no parallel test methods against shared Clock/provider fixtures.
+
+Select a dedicated bounded fixture pool (maximum eight/minimum one, five-second acquisition and initialization bounds, stable pool name), one instance shared by owner JdbcTemplate and setup TransactionTemplate. Held connections remain explicit independent real transactions. Close it in AfterAll even when application shutdown fails. Read-only inspection found only a transaction-local timezone override; no owner session-level SET or unwrap state dependency. Existing fail/rollback/revocation/concurrency scenarios are required unchanged.
+
+A disposable200-query SELECT benchmark measured2576.9452ms with fresh connections and125.6311ms pooled, using existing dependencies. This is not full-suite speed evidence. The verified schema65 HTTP baseline is947 tests/700.118 seconds. Before accepting this change, run focused real failure/race scenarios, a distinct source review and full wrapper verify with all1277 checks and zero skips; record actual wall/HTTP times. Compare all frozen source inputs, allowing only the fixture test edit. Reuse previous packaged/schema65 image evidence only if actual JAR and application class/resource bytes are identical; otherwise repeat required artifact gates. Production/provider/client/hosted/restore/legal gates remain separate.
+
+## Executed evidence
+
+Full wrapper .tools/fixture-pooling-final-verify.log passed all1,277 checks (155 unit/1,122 PostgreSQL+native), zero failures/errors/skips. All947 HTTP scenarios remain; actual elapsed531.58s versus700.118s baseline (24.07% reduction in this observed run). Full wrapper14:58 min versus18:51 baseline (20.6% reduction). These are one local before/after measurement, not a guaranteed future runtime or production performance claim.
+
+Focused155 unit/11 real HTTP failure/race/retention checks passed before the full run. Distinct review .tools/fixture-pooling-review.md found no remaining actionable issue. Only fixture construction/import/pool lifecycle changed among545 frozen inputs; reversing those exact edits restores the original source hash, proving scenario methods/assertions were not otherwise edited. Full-run frozen hashes unchanged; no parallel methods or skipped infrastructure.
+
+Exact JAR SHA256d169d7a98d76406534eeb4f48f7d3ddfe52e258aa664c7a263865d74f56cc3b4 and all829 application classes/70 resources match the previously verified schema65 artifact/imagesha256:4456f8aa262c09412e7b53bc594c8fcf62030a452a9ee97167c3064724461426. Native fixture/production class and processor match. Prior [schema65 packaged migration, startup, image/native and cached dependency/advisory evidence](SESSION_RETENTION_VERIFICATION.md) is reused for these identical bytes; no new advisory or provider acceptance claim. Source secret scan zero; document/diff checks passed. Cleanup inspected16 recorded owned disposable identities with none remaining. Evidence .tools/fixture-pooling-*; baseline .tools/fixture-pooling-baseline.json.
+
+No application source/schema/contract/dependency changes, production commands, provisioning, purchase, merge or release. Continue with remaining capability/metadata retention and legal/recovery/tooling plus external acceptance gates; faster verification does not close those requirements.
+

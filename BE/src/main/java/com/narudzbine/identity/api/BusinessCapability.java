@@ -1,0 +1,24 @@
+package com.narudzbine.identity.api;
+
+/** Role-level capabilities only; every command still enforces its object and workflow conditions. */
+public enum BusinessCapability {
+    READ_OWN_ORGANIZATION,
+    READ_ORGANIZATION_AUDIT,
+    SEND_ORDER_MESSAGE,
+    MANAGE_ORGANIZATION_SETTINGS,
+    MANAGE_ORDER_STAGES,
+    EDIT_CATALOGUE,
+    EDIT_PRICES,
+    EDIT_PROMOTIONS,
+    EDIT_STOCK,
+    PREPARE_BUYER_ORDER,
+    SUBMIT_OR_CANCEL_BUYER_ORDER,
+    FULFILL_VENDOR_ORDER,
+    MANAGE_LOCATIONS_AND_CONTACTS,
+    MANAGE_STAFF,
+    MANAGE_ADMIN_ROLES,
+    INITIATE_OWNERSHIP_TRANSFER,
+    CLOSE_ORGANIZATION,
+    DISCONNECT_TRADING_PARTNER,
+    REQUEST_VENDOR_PLAN_CHANGE
+}

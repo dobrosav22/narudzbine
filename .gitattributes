@@ -1,0 +1,3 @@
+BE/native/*.lock text eol=lf
+BE/native/*.sh text eol=lf
+BE/src/test/resources/*.sh text eol=lf

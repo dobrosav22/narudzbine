@@ -1,0 +1,21 @@
+# Connection lifecycle verification
+
+2026-10-19, local backend/infrastructure only. [Implementation and grants](CONNECTION_LIFECYCLE_IMPLEMENTATION.md).
+
+Focused wrapper checks passed40 unit/contract/architecture/MockMvc tests and12 targeted PostgreSQL integration checks (11 HTTP groups plus schema20-to21 preservation). The first focused run found two assertions expecting STALE_WRITE while the existing approved revision response is REVISION_CONFLICT; assertions were corrected and passed. Distinct review added simultaneous platform-admin last-slot contention before the final full gate.
+
+Scenarios cover domestic administrative activation in RS/BA without ownership changes; atomic pending invitation supersession; natural active-pair no-op; country/type/status/plan/role boundaries; current-revision disconnect/no-op/stale conflicts; reconnect identity/generation; manager/actor eligibility, locale capture and reason-free ordinary delivery parameters; rollback on notice/outbox/audit failures; real simultaneous disconnects; role demotion while blocked on actual organization guards; strict reason/revision/unknown-field validation; browser CSRF/CORS; and retained relationship/receipt state across migration with no fabricated notices. The full gate also includes existing invitation/new-buyer, provider ambiguity, identity/session/account/location/contact/member/ownership/password/email/external/recovery regressions.
+
+Notification checks prove durable recipient/channel intent only. No preference API, ordinary worker, real email/push delivery or hosted/client/provider acceptance is claimed. getPartner/public contact/historical projection, current administrative read workflows, plan administration and commercial modules remain pending. X-01..06/G-01..07 retain their separately documented scope; actual provider/operator/client/delivery inputs and checks remain open. No frontend edits, provisioning, purchases, deployment, push or merge.
+
+Final unfiltered gate and artifact evidence follow.
+
+## Final gate and artifact evidence
+
+Final unfiltered Maven Wrapper verify passed **314 tests, zero failures/errors/skips**:40 unit/contract/architecture/MockMvc plus274 real PostgreSQL IT (Foundation22, AuthHttp204, IdentityBoundaries11, PasswordLogin15, SessionService22). Command uses the approved bundled JDK25/Maven3.10 wrapper/settings/cache and no test filter; final local log .tools/connection-final-verify.log. No executable/schema/test/build changes followed this gate.
+
+The first full gate had one failure in the new two-waiter contention observer: it counted only direct PostgreSQL blockers. PostgreSQL may queue a second waiter behind the first, so the observer now follows the real recursive blocking chain. This test-only correction preserves the actual simultaneous contention assertion; it does not change application capacity behavior. Both contention scenarios passed focused checks before this final full rerun.
+
+Packaged schema21 migration and nonroot read-only Linux startup passed with disposable private PostgreSQL/application containers: readiness200, public diagnostics and default-disabled previous/new routes404; containers/network removed. Local script .tools/vs02_connection_container_smoke.py and result JSON. Local image narudzbine-backend:vs02-connection; actual image ID sha256:2c48d276a7920240287ef22c5639fc468d687230ad6454084c64fcda97a84f6e; JAR SHA-256 8429e52ca48729f722d20acdf6563ed6a61311c37f3e3763e48a0d6adc4feb9e. Image scan metadata matches the built image and recorded JAR hash.
+
+Trivy0.76.0 changed-source secret scan0. New image cached scan Java/HIGH/CRITICAL0; existing base-image26 MEDIUM/4 LOW remain, no suppressions. Cached vulnerability advisory DB updated2026-10-16/downloaded2026-10-17, not fresh online advisory evidence. Trivy refreshed its separate Java artifact-identification DB (updated2026-10-18, downloaded2026-10-19); that is not a vulnerability advisory refresh. Final SBOM110 licensed runtime components; dependencies/base image unchanged, prior separate dependency/SBOM resolution/scan evidence reused. No claim of hosted delivery, independent clean reproducibility build or production release readiness. Structural contract/register/local-link/whitespace checks remain208 operations/204 schemas/3017 references,625 questions/545 decisions/543 requirement and trace rows.
