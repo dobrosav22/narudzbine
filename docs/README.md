@@ -64,6 +64,7 @@ Product and UX intent written before the backend existed. Where these describe d
 | [Product overview](product/product-overview.md) | Users, goals, scope, open questions (v1.1). |
 | [Screens and flows](product/screens-and-flows.md) | Navigation and screen inventory (v1.1). |
 | [Visual design system](product/visual-design-system.md) | Tokens, typography, components, tone (v1.1). |
+| [Landing page design brief](product/landing-page-design.md) | Positioning, structure, visual language, copy and imagery for the public landing page. |
 | [Frontend agent instructions](product/frontend-agent-instructions.md) | Original frontend build instructions (v1.1). |
 | [Data contract outline](product/data-contract-outline.md) | Pre-backend API sketch — superseded by openapi.yaml, kept for history. |
 | [Archive: v1.0](archive/product-v1.0/) | The first version of the five product documents. |
