@@ -2,7 +2,7 @@
 
 import { AlertCircleIcon, PlugZapIcon, RotateCcwIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { isServiceError } from "@repo/core";
+import { isApiError } from "@repo/core";
 import { useErrorText } from "@/lib/i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,22 +17,21 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Error state for any failed service call. NOT_IMPLEMENTED (USE_MOCKS=false
- * with no real service yet) is called out explicitly so it can't be mistaken
- * for a transient failure.
+ * Error state for any failed API call, in the UI language. An unreachable server
+ * (NETWORK_ERROR) gets its own title; retry is offered whenever a handler is given.
  */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const t = useTranslations("states");
   const errorText = useErrorText();
-  const notImplemented = isServiceError(error, "NOT_IMPLEMENTED");
+  const unreachable = isApiError(error, "NETWORK_ERROR");
   const message = errorText(error);
   return (
     <Alert variant="destructive">
-      {notImplemented ? <PlugZapIcon /> : <AlertCircleIcon />}
-      <AlertTitle>{notImplemented ? t("backendNotConnected") : t("somethingWentWrong")}</AlertTitle>
+      {unreachable ? <PlugZapIcon /> : <AlertCircleIcon />}
+      <AlertTitle>{unreachable ? t("serverUnreachable") : t("somethingWentWrong")}</AlertTitle>
       <AlertDescription className="flex flex-col items-start gap-3">
         <p>{message}</p>
-        {onRetry && !notImplemented && (
+        {onRetry && (
           <Button variant="outline" size="sm" onClick={onRetry}>
             <RotateCcwIcon data-icon="inline-start" />
             {t("tryAgain")}

@@ -1,101 +1,125 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  loadBuyerCatalogue,
-  loadBuyerShelves,
-  loadCartPricing,
-  loadProductDetail,
-  services,
-  type BuyerFavorite,
+  addFavorite,
+  checkoutQueries,
+  discardDraft,
+  draftKeys,
+  draftQueries,
+  isApiError,
+  isValidQuantity,
+  offerKeys,
+  offerQueries,
+  removeFavorite,
   type CartLine,
+  type Favorite,
+  type Offer,
+  type OfferFilters,
 } from '@repo/core';
 
-/** Same key shapes as apps/web's buyer-catalogue/queries.ts. */
-export const keys = {
-  root: (vendorOrgId: string) => ['buyerCatalogue', vendorOrgId] as const,
-  favorites: (buyerUserId: string) => ['favorites', buyerUserId] as const,
-};
+/** Buyer-side catalogue/workspace hooks over the shared @repo/core factories. */
 
-interface Scope {
-  vendorOrgId: string;
-  buyerOrgId: string;
+export function useConnectedVendors() {
+  return useQuery(offerQueries.connectedVendors());
 }
 
-export function useBuyerCatalogue(scope: Scope, filters: { search: string; categoryId?: string }) {
+export function useOfferList(vendorId: string, filters: OfferFilters) {
+  return useInfiniteQuery({ ...offerQueries.list(vendorId, filters), placeholderData: keepPreviousData });
+}
+
+/** One offer priced at a valid quantity (keeps the previous price on screen while re-pricing). */
+export function useOffer(vendorId: string | null, productId: string, quantity?: number) {
   return useQuery({
-    queryKey: [...keys.root(scope.vendorOrgId), scope.buyerOrgId, 'list', filters],
-    queryFn: () => loadBuyerCatalogue(services, { ...scope, ...filters }),
-    placeholderData: (prev) => prev,
+    ...offerQueries.detail(vendorId ?? '', productId, quantity),
+    enabled: !!vendorId,
+    placeholderData: keepPreviousData,
   });
 }
 
-export function useBuyerShelves(scope: Scope) {
-  return useQuery({
-    queryKey: [...keys.root(scope.vendorOrgId), scope.buyerOrgId, 'shelves'],
-    queryFn: () => loadBuyerShelves(services, scope),
-  });
+export function useOfferTaxonomy(vendorId: string) {
+  return useQuery(offerQueries.taxonomy(vendorId));
 }
 
-export function useProductDetail(scope: Scope, productId: string) {
-  return useQuery({
-    queryKey: [...keys.root(scope.vendorOrgId), scope.buyerOrgId, 'detail', productId],
-    queryFn: () => loadProductDetail(services, { ...scope, productId }),
-  });
+export function useFeaturedOffers(vendorId: string) {
+  return useQuery(offerQueries.featured(vendorId));
 }
 
-export function useLinePrice(scope: Scope, productId: string, quantity: number) {
-  return useQuery({
-    queryKey: [...keys.root(scope.vendorOrgId), scope.buyerOrgId, 'linePrice', productId, quantity],
-    queryFn: async () => {
-      const [price] = await services.pricing.resolvePrices({ ...scope, items: [{ productId, quantity }] });
-      return price!;
-    },
-    enabled: quantity > 0,
-    placeholderData: (prev) => prev,
-  });
+export function useMostOrdered(vendorId: string) {
+  return useQuery(offerQueries.mostOrdered(vendorId));
 }
 
-export function useCartPricing(scope: Scope | undefined, lines: CartLine[]) {
-  return useQuery({
-    queryKey: [...keys.root(scope?.vendorOrgId ?? ''), scope?.buyerOrgId, 'cart', lines],
-    queryFn: () => loadCartPricing(services, { ...scope!, lines }),
-    enabled: !!scope,
-    // While re-pricing, keep showing the previous result only if it already covers every current
-    // product (quantity change, removal) — never show another cart's rows (e.g. right after
-    // resuming a draft) as if they were this one; new products show the loading state instead.
-    placeholderData: (prev) => {
-      if (!prev) return undefined;
-      const priced = new Set(prev.rows.map((r) => r.line.productId));
-      if (!lines.every((l) => priced.has(l.productId))) return undefined;
-      const current = new Set(lines.map((l) => l.productId));
-      return { ...prev, rows: prev.rows.filter((r) => current.has(r.line.productId)) };
-    },
-  });
+export function useFavorites() {
+  return useQuery(offerQueries.favorites());
 }
 
-export function useCategories(vendorOrgId: string) {
-  return useQuery({ queryKey: ['categories', vendorOrgId], queryFn: () => services.catalogue.listCategories(vendorOrgId) });
-}
-
-export function useFavorites(buyerUserId: string) {
-  return useQuery({ queryKey: keys.favorites(buyerUserId), queryFn: () => services.favorites.list(buyerUserId) });
-}
-
-export function useToggleFavorite(buyerUserId: string) {
+/** Optimistic shared-favorite toggle; PUT needs current offer access, DELETE always succeeds. */
+export function useToggleFavorite() {
   const qc = useQueryClient();
-  const key = keys.favorites(buyerUserId);
+  const key = offerKeys.favorites();
   return useMutation({
-    mutationFn: (productId: string) => services.favorites.toggle(buyerUserId, productId),
-    onMutate: async (productId) => {
+    mutationFn: ({ productId, on }: { productId: string; on: boolean; offer?: Offer }) =>
+      on ? addFavorite(productId).then(() => undefined) : removeFavorite(productId),
+    onMutate: async ({ productId, on, offer }) => {
       await qc.cancelQueries({ queryKey: key });
-      const previous = qc.getQueryData<BuyerFavorite[]>(key);
-      qc.setQueryData<BuyerFavorite[]>(key, (favs = []) =>
-        favs.some((f) => f.productId === productId)
-          ? favs.filter((f) => f.productId !== productId)
-          : [...favs, { id: `optimistic-${productId}`, buyerUserId, productId }],
+      const previous = qc.getQueryData<Favorite[]>(key);
+      qc.setQueryData<Favorite[]>(key, (favs = []) =>
+        on
+          ? favs.some((f) => f.productId === productId)
+            ? favs
+            : [{ productId, available: true, offer: offer ?? null, createdAt: new Date().toISOString() }, ...favs]
+          : favs.filter((f) => f.productId !== productId),
       );
       return { previous };
     },
-    onError: (_e, _productId, ctx) => qc.setQueryData(key, ctx?.previous),
+    onError: (_e, _v, ctx) => qc.setQueryData(key, ctx?.previous),
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export interface CartLineOffer {
+  line: CartLine;
+  /** Current offer priced at the line quantity (or at the product minimum while the quantity is invalid). */
+  offer: Offer | undefined;
+  /** The product is no longer orderable from this vendor (404 or disconnected). */
+  unavailable: boolean;
+  error: unknown;
+  isPending: boolean;
+}
+
+/**
+ * Current offers for every cart line. A line whose quantity does not fit its (last known)
+ * minimum/step is priced at the product default so the cart can still show it and suggest a fix.
+ */
+export function useCartLineOffers(vendorId: string | undefined, lines: CartLine[]): CartLineOffer[] {
+  const results = useQueries({
+    queries: lines.map((line) => {
+      const valid = line.snapshot ? isValidQuantity(line.quantity, line.snapshot) : false;
+      return {
+        ...offerQueries.detail(vendorId ?? '', line.productId, valid ? line.quantity : undefined),
+        enabled: !!vendorId,
+        placeholderData: keepPreviousData,
+        retry: (count: number, error: unknown) => !isApiError(error) && count < 2,
+      };
+    }),
+  });
+  return lines.map((line, i) => {
+    const r = results[i]!;
+    const unavailable = isApiError(r.error) && (r.error.status === 404 || r.error.code === 'RELATIONSHIP_UNAVAILABLE' || r.error.code === 'TRADING_DISCONNECTED');
+    return { line, offer: r.data, unavailable, error: unavailable ? null : r.error, isPending: r.isPending };
+  });
+}
+
+export function useActiveLocations() {
+  return useQuery(checkoutQueries.activeLocations());
+}
+
+export function useDrafts() {
+  return useInfiniteQuery(draftQueries.list());
+}
+
+export function useDiscardDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ draftId, revision }: { draftId: string; revision: string }) => discardDraft(draftId, revision),
+    onSettled: () => qc.invalidateQueries({ queryKey: draftKeys.all }),
   });
 }

@@ -1,0 +1,43 @@
+{
+  "title": "Kategorije, oznake i jedinice",
+  "description": "Kupci filtriraju vaš katalog po kategorijama i oznakama. Jedinice se prikazuju na svakoj stavci porudžbine.",
+  "renameAria": "Preimenuj {name}",
+  "deleteAria": "Obriši {name}",
+  "nameRequired": "Unesite naziv.",
+  "tooLong": "Najviše {max} znakova.",
+  "frozen": "Naručivano — naziv zaključan",
+  "frozenHint": "Ova jedinica je već naručivana, pa joj se naziv ne može menjati.",
+  "inUse": "„{name}” još koriste proizvodi ili akcije. Prvo je uklonite odatle.",
+  "kind": {
+    "categories": {
+      "title": "Kategorije",
+      "empty": "Još nema kategorija.",
+      "new": "Nova kategorija",
+      "added": "Dodata je kategorija „{name}”",
+      "renamed": "Kategorija je preimenovana u „{name}”",
+      "deleted": "Obrisana je kategorija „{name}”",
+      "deleteTitle": "Obrisati kategoriju „{name}”?",
+      "deleteNote": "Mogu se brisati samo kategorije koje se ne koriste. Naziv ponovo postaje slobodan."
+    },
+    "tags": {
+      "title": "Oznake",
+      "empty": "Još nema oznaka.",
+      "new": "Nova oznaka",
+      "added": "Dodata je oznaka „{name}”",
+      "renamed": "Oznaka je preimenovana u „{name}”",
+      "deleted": "Obrisana je oznaka „{name}”",
+      "deleteTitle": "Obrisati oznaku „{name}”?",
+      "deleteNote": "Mogu se brisati samo oznake koje se ne koriste. Naziv ponovo postaje slobodan."
+    },
+    "units": {
+      "title": "Jedinice",
+      "empty": "Još nema jedinica. Proizvodima je potrebna jedinica pre aktivacije.",
+      "new": "Nova jedinica (npr. kg, gajba)",
+      "added": "Dodata je jedinica „{name}”",
+      "renamed": "Jedinica je preimenovana u „{name}”",
+      "deleted": "Obrisana je jedinica „{name}”",
+      "deleteTitle": "Obrisati jedinicu „{name}”?",
+      "deleteNote": "Mogu se brisati samo jedinice koje nijedan proizvod ne koristi."
+    }
+  }
+}

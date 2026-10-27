@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { USE_MOCKS } from "@repo/core";
+import { formatNumber, unreadBadge } from "@repo/core";
 import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
@@ -21,18 +21,16 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { formatNumber } from "@repo/core";
+import { useUnreadNotifications } from "@/features/account/queries";
 import { useCart } from "@/lib/cart";
-import { AdminUserMenu } from "./admin-user-menu";
 import { isNavActive, NAV, type ShellKind } from "./nav";
 import { UserMenu } from "./user-menu";
 import { VendorSwitcher } from "./vendor-switcher";
 
-/** Vendor, buyer and (v1.1, web-only) admin shells (03 → "Navigation shape") — same frame, different nav. */
-export function AppShell({ orgType, children }: { orgType: ShellKind; children: React.ReactNode }) {
+/** Vendor, buyer and (web-only) platform-admin shells: the same frame with a different nav. */
+export function AppShell({ kind, children }: { kind: ShellKind; children: React.ReactNode }) {
   const pathname = usePathname();
   const t = useTranslations();
-  const tk = t as unknown as (key: string) => string;
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -41,35 +39,24 @@ export function AppShell({ orgType, children }: { orgType: ShellKind; children: 
             <Link href="/" className="font-semibold tracking-tight text-primary">
               Narudžbine
             </Link>
-            {USE_MOCKS && <Badge variant="outline">{t("common.mockData")}</Badge>}
-            {orgType === "admin" && <Badge variant="secondary">{t("shell.adminBadge")}</Badge>}
+            {kind === "admin" && <Badge variant="secondary">{t("shell.adminBadge")}</Badge>}
           </div>
-          {orgType === "buyer" && <VendorSwitcher />}
+          {kind === "buyer" && <VendorSwitcher />}
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {NAV[orgType].map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    {item.href ? (
-                      <SidebarMenuButton asChild isActive={isNavActive(item, pathname)} tooltip={tk(item.title)}>
-                        <Link href={item.href}>
-                          <item.icon />
-                          <span>{tk(item.title)}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    ) : null}
-                    {item.href && item.badge === "cart" && <CartBadge />}
-                    {!item.href && (
-                      <>
-                        <SidebarMenuButton disabled tooltip={t("shell.comingSoon", { item: tk(item.title) })}>
-                          <item.icon />
-                          <span>{tk(item.title)}</span>
-                        </SidebarMenuButton>
-                        <SidebarMenuBadge>{t("shell.soon")}</SidebarMenuBadge>
-                      </>
-                    )}
+              <SidebarMenu aria-label={t("nav.mainNavigation")}>
+                {NAV[kind].map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isNavActive(item, pathname)} tooltip={t(`nav.${item.title}`)}>
+                      <Link href={item.href}>
+                        <item.icon />
+                        <span>{t(`nav.${item.title}`)}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    {item.badge === "cart" && <CartBadge />}
+                    {item.badge === "unread" && <UnreadBadge />}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -77,7 +64,7 @@ export function AppShell({ orgType, children }: { orgType: ShellKind; children: 
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          {orgType === "admin" ? <AdminUserMenu /> : <UserMenu />}
+          <UserMenu kind={kind} />
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
@@ -91,7 +78,7 @@ export function AppShell({ orgType, children }: { orgType: ShellKind; children: 
   );
 }
 
-/** Live item count on the Cart nav item; hidden when empty. */
+/** Live item count on the Cart nav item (local cart, owned by the buyer catalogue area); hidden when empty. */
 function CartBadge() {
   const t = useTranslations("shell");
   const { itemCount } = useCart();
@@ -99,4 +86,13 @@ function CartBadge() {
   return (
     <SidebarMenuBadge aria-label={t("itemsInCart", { count: itemCount, countText: formatNumber(itemCount) })}>{formatNumber(itemCount)}</SidebarMenuBadge>
   );
+}
+
+/** Unread inbox entries (first page of unread items; "99+" beyond). */
+function UnreadBadge() {
+  const t = useTranslations("shell");
+  const unread = useUnreadNotifications();
+  const label = unread.data ? unreadBadge(unread.data.count, unread.data.more) : null;
+  if (!label || !unread.data) return null;
+  return <SidebarMenuBadge aria-label={t("unreadCount", { count: unread.data.count, countText: label })}>{label}</SidebarMenuBadge>;
 }

@@ -1,65 +1,74 @@
 import {
   BarChart3Icon,
+  BellIcon,
   Building2Icon,
   ClipboardListIcon,
+  FileClockIcon,
+  FilePenLineIcon,
   HeartIcon,
+  InboxIcon,
   LayoutDashboardIcon,
   MapPinIcon,
   PackageIcon,
   SettingsIcon,
   ShoppingCartIcon,
   StoreIcon,
+  TruckIcon,
   UsersIcon,
   UsersRoundIcon,
   type LucideIcon,
 } from "lucide-react";
-import type { OrgType } from "@repo/core";
+import type { Messages } from "@repo/core";
+
+export type NavKey = keyof Messages["nav"];
 
 export interface NavItem {
-  /** Translation key (i18n → nav.*). */
-  title: string;
+  /** Translation key under `nav`. */
+  title: NavKey;
   icon: LucideIcon;
-  /** Absent = screen not built yet; rendered disabled with a "Soon" badge. */
-  href?: string;
-  /** Active only on exactly href, plus these prefixes (default: any path under href). */
+  href: string;
+  /** Active only on exactly href, plus `alsoActiveUnder` prefixes (default: any path under href). */
   exact?: boolean;
   alsoActiveUnder?: string[];
   /** Live count shown on the item. */
-  badge?: "cart";
+  badge?: "cart" | "unread";
 }
 
 export function isNavActive(item: NavItem, pathname: string): boolean {
-  if (!item.href) return false;
   if (item.alsoActiveUnder?.some((p) => pathname.startsWith(p))) return true;
-  return item.exact ? pathname === item.href : pathname.startsWith(item.href);
+  return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-/** 03 → "Navigation shape". Items gain an href as each screen lands. */
-/** v1.1: the admin shell is web-only (02 "Admin panel"). */
-export type ShellKind = OrgType | "admin";
+export type ShellKind = "vendor" | "buyer" | "admin";
 
+/** One entry per route group (fixed route map in docs/frontend/integration-guide.md and the area briefs). */
 export const NAV: Record<ShellKind, NavItem[]> = {
   vendor: [
-    { title: "nav.dashboard", icon: LayoutDashboardIcon, href: "/vendor", exact: true },
-    { title: "nav.catalogue", icon: PackageIcon, href: "/vendor/catalogue" },
-    { title: "nav.orders", icon: ClipboardListIcon, href: "/vendor/orders" },
-    { title: "nav.buyers", icon: UsersIcon, href: "/vendor/buyers" },
-    { title: "nav.locations", icon: MapPinIcon, href: "/vendor/locations" },
-    { title: "nav.stats", icon: BarChart3Icon, href: "/vendor/stats" },
-    { title: "nav.team", icon: UsersRoundIcon, href: "/vendor/team" },
-    { title: "nav.settings", icon: SettingsIcon, href: "/vendor/settings" },
+    { title: "dashboard", icon: LayoutDashboardIcon, href: "/vendor", exact: true },
+    { title: "catalogue", icon: PackageIcon, href: "/vendor/catalogue" },
+    { title: "orders", icon: ClipboardListIcon, href: "/vendor/orders" },
+    { title: "buyers", icon: UsersIcon, href: "/vendor/buyers" },
+    { title: "stats", icon: BarChart3Icon, href: "/vendor/stats" },
+    { title: "notifications", icon: InboxIcon, href: "/vendor/notifications", badge: "unread" },
+    { title: "team", icon: UsersRoundIcon, href: "/vendor/team" },
+    { title: "locations", icon: MapPinIcon, href: "/vendor/locations" },
+    { title: "settings", icon: SettingsIcon, href: "/vendor/settings" },
   ],
   buyer: [
-    { title: "nav.home", icon: StoreIcon, href: "/buyer", exact: true, alsoActiveUnder: ["/buyer/products"] },
-    { title: "nav.cart", icon: ShoppingCartIcon, href: "/buyer/cart", badge: "cart", alsoActiveUnder: ["/buyer/checkout"] },
-    { title: "nav.orders", icon: ClipboardListIcon, href: "/buyer/orders" },
-    { title: "nav.favorites", icon: HeartIcon, href: "/buyer/favorites" },
-    { title: "nav.stats", icon: BarChart3Icon, href: "/buyer/stats" },
-    { title: "nav.settings", icon: SettingsIcon, href: "/buyer/settings" },
+    { title: "browse", icon: StoreIcon, href: "/buyer", exact: true, alsoActiveUnder: ["/buyer/products"] },
+    { title: "cart", icon: ShoppingCartIcon, href: "/buyer/cart", badge: "cart", alsoActiveUnder: ["/buyer/checkout"] },
+    { title: "drafts", icon: FilePenLineIcon, href: "/buyer/drafts" },
+    { title: "favorites", icon: HeartIcon, href: "/buyer/favorites" },
+    { title: "orders", icon: ClipboardListIcon, href: "/buyer/orders" },
+    { title: "vendors", icon: TruckIcon, href: "/buyer/vendors" },
+    { title: "stats", icon: BarChart3Icon, href: "/buyer/stats" },
+    { title: "notifications", icon: InboxIcon, href: "/buyer/notifications", badge: "unread" },
+    { title: "settings", icon: SettingsIcon, href: "/buyer/settings" },
   ],
   admin: [
-    { title: "nav.dashboard", icon: LayoutDashboardIcon, href: "/admin", exact: true },
-    { title: "nav.vendors", icon: Building2Icon, href: "/admin/vendors" },
-    { title: "nav.buyers", icon: UsersIcon, href: "/admin/buyers" },
+    { title: "dashboard", icon: LayoutDashboardIcon, href: "/admin", exact: true },
+    { title: "organizations", icon: Building2Icon, href: "/admin/organizations" },
+    { title: "planRequests", icon: BellIcon, href: "/admin/plan-requests" },
+    { title: "audit", icon: FileClockIcon, href: "/admin/audit" },
   ],
 };

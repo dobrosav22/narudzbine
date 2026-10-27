@@ -1,176 +1,198 @@
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
+import { ChevronRight, MapPin } from 'lucide-react-native';
 import {
-  countMsg,
-  emptyLocationDraft,
-  isServiceError,
-  LOCATION_COPY,
-  validateLocationDraft,
+  addressProblems,
+  canManageOrganization,
+  cleanAddress,
+  contactDraftFrom,
+  contactFromDraft,
+  contactProblems,
+  emptyAddress,
+  formatAddress,
+  isContactDraftBlank,
+  textOrNull,
+  textProblem,
+  uuidv7,
   type Location,
-  type LocationDraft,
-  type OrgType,
-  type VendorLocation,
-  type Msg,
 } from '@repo/core';
 import { AppText } from '@/components/app-text';
+import { FormScreen } from '@/components/form-screen';
 import { EmptyState, ErrorState, LoadingState } from '@/components/query-states';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardHeader } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
 import { Field, FieldGroup, Input } from '@/components/ui/field';
 import { FieldError } from '@/components/ui/field-error';
-import { FormError } from '@/components/ui/form-error';
-import { SectionTitle } from '@/features/stats/parts';
-import { useDeleteLocation, useLocations, useSaveLocation } from './queries';
-import { useErrorText, useMsg, useT } from '@/lib/i18n';
+import { useIdErrorText } from '@/features/auth/error-text';
+import { useT } from '@/lib/i18n';
+import { useBusiness } from '@/lib/session';
+import { useTokenColors } from '@/theme';
+import { AddressFields, confirmAction, ContactFields, SaveError, useProblemText } from './parts';
+import { useArchiveLocation, useLocations, useSaveLocation } from './queries';
 
-type AnyLocation = Location | VendorLocation;
+/** Saved locations (vendor fulfilment / buyer delivery). Owner/admin manage; everyone reads. */
+export function LocationsScreen() {
+  const t = useT('settings');
+  const c = useTokenColors();
+  const { account, organization } = useBusiness();
+  const vendor = organization.type === 'VENDOR';
+  const canEdit = canManageOrganization(account.role);
+  const [archived, setArchived] = useState(false);
+  const locations = useLocations({ size: 100, state: archived ? 'ARCHIVED' : 'ACTIVE' });
+  const [editing, setEditing] = useState<Location | 'new' | null>(null);
 
-/** 03 → "Locations" on mobile: the list, an add/edit form card, delete with inline confirm. Mirrors web's LocationsPanel. */
-export function LocationsScreen({ orgType, orgId }: { orgType: OrgType; orgId: string }) {
-  const t = useT('settings.locations');
-  const tmo = useT('m.locations');
-  const tc = useT('common');
-  const tm = useMsg();
-  const copy = LOCATION_COPY[orgType];
-  const org = { orgType, orgId };
-  const locations = useLocations(org);
-  const remove = useDeleteLocation(org);
-  const [editing, setEditing] = useState<AnyLocation | 'new' | null>(null);
-  const [confirming, setConfirming] = useState<string | null>(null);
-
-  if (locations.isError) return <ErrorState error={locations.error} onRetry={() => void locations.refetch()} />;
-  if (locations.isPending) return <LoadingState label={tmo('loading')} />;
+  if (editing) {
+    return (
+      <LocationForm
+        key={editing === 'new' ? 'new' : editing.id}
+        existing={editing === 'new' ? undefined : editing}
+        vendor={vendor}
+        country={organization.country}
+        onReload={async () => (await locations.refetch()).data?.items.find((l) => editing !== 'new' && l.id === editing.id)}
+        onClose={() => setEditing(null)}
+      />
+    );
+  }
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-5 p-4 pb-12" keyboardShouldPersistTaps="handled">
-      {editing ? (
-        <LocationForm
-          key={editing === 'new' ? 'new' : editing.id}
-          org={org}
-          location={editing === 'new' ? undefined : editing}
-          onClose={() => setEditing(null)}
-        />
-      ) : (
-        <Button onPress={() => setEditing('new')}>{tm({ key: copy.add })}</Button>
-      )}
-
-      <View className="gap-3">
-        <SectionTitle>{`${tm({ key: copy.title })} · ${tm(countMsg(copy.count, locations.data.length))}`}</SectionTitle>
-        <FormError error={remove.error} />
-        {locations.data.length === 0 ? (
-          <EmptyState
-            title={tm({ key: copy.none })}
-            description={orgType === 'vendor' ? t('vendorEmpty') : t('buyerEmpty')}
-          />
-        ) : (
-          <View className="overflow-hidden rounded-xl border border-border">
-            {locations.data.map((l, i) => (
-              <View key={l.id}>
-                {i > 0 && <View className="h-px bg-border" />}
-                <View className="gap-2 bg-background p-3">
-                  <AppText weight="medium" className="text-base text-foreground">
-                    {l.name}
-                  </AppText>
-                  <AppText className="text-sm text-muted-foreground">{l.address}</AppText>
-                  {confirming === l.id ? (
-                    <View className="gap-2" accessibilityRole="alert">
-                      <AppText className="text-sm text-foreground">{tmo('deleteConfirm', { name: l.name })}</AppText>
-                      <View className="flex-row gap-2">
-                        <Button size="sm" variant="outline" className="flex-1" onPress={() => setConfirming(null)}>
-                          {t('keep')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="flex-1"
-                          loading={remove.isPending}
-                          onPress={() => remove.mutate(l.id, { onSettled: () => setConfirming(null) })}>
-                          {tc('delete')}
-                        </Button>
-                      </View>
-                    </View>
-                  ) : (
-                    <View className="flex-row gap-2">
-                      <Button size="sm" variant="outline" accessibilityLabel={tmo('editAria', { name: l.name })} onPress={() => setEditing(l)}>
-                        {tc('edit')}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        accessibilityLabel={tmo('deleteAria', { name: l.name })}
-                        onPress={() => {
-                          remove.reset();
-                          setConfirming(l.id);
-                        }}>
-                        {tc('delete')}
-                      </Button>
-                    </View>
-                  )}
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
+    <FormScreen>
+      <AppText className="text-sm text-muted-foreground">
+        {vendor ? t('locations.vendorDescription') : t('locations.buyerDescription')} {!canEdit && t('readOnly')}
+      </AppText>
+      <View className="flex-row gap-2">
+        <Chip role="radio" label={t('stateFilter.ACTIVE')} selected={!archived} onPress={() => setArchived(false)} />
+        <Chip role="radio" label={t('stateFilter.ARCHIVED')} selected={archived} onPress={() => setArchived(true)} />
       </View>
-    </ScrollView>
+      {locations.isError ? (
+        <ErrorState error={locations.error} onRetry={() => void locations.refetch()} />
+      ) : locations.isPending ? (
+        <LoadingState />
+      ) : locations.data.items.length === 0 ? (
+        <EmptyState title={t('locations.empty')} description={canEdit ? t('locations.emptyHint') : undefined} />
+      ) : (
+        <View className="overflow-hidden rounded-lg border border-border">
+          {locations.data.items.map((l, i) => (
+            <Pressable
+              key={l.id}
+              disabled={!canEdit}
+              accessibilityRole={canEdit ? 'button' : undefined}
+              onPress={() => setEditing(l)}
+              className={`flex-row items-center gap-3 bg-background p-3 active:bg-muted ${i > 0 ? 'border-t border-border' : ''}`}>
+              <MapPin size={18} color={c['muted-foreground']} />
+              <View className="flex-1 gap-0.5">
+                <AppText weight="medium" className="text-base text-foreground">
+                  {l.name}
+                </AppText>
+                <AppText className="text-xs text-muted-foreground">{formatAddress(l.address)}</AppText>
+              </View>
+              {l.state === 'ARCHIVED' && <Badge>{t('archived')}</Badge>}
+              {canEdit && <ChevronRight size={18} color={c['muted-foreground']} />}
+            </Pressable>
+          ))}
+        </View>
+      )}
+      {canEdit && <Button onPress={() => setEditing('new')}>{t('locations.add')}</Button>}
+    </FormScreen>
   );
 }
 
 function LocationForm({
-  org,
-  location,
+  existing: initial,
+  vendor,
+  country,
+  onReload,
   onClose,
 }: {
-  org: { orgType: OrgType; orgId: string };
-  location: AnyLocation | undefined;
+  existing?: Location;
+  vendor: boolean;
+  country: Location['address']['country'];
+  onReload: () => Promise<Location | undefined>;
   onClose: () => void;
 }) {
-  const t = useT('settings.locations');
-  const tmo = useT('m.locations');
+  const t = useT('settings');
   const tc = useT('common');
-  const tm = useMsg();
-  const errorText = useErrorText();
-  const copy = LOCATION_COPY[org.orgType];
-  const [draft, setDraft] = useState<LocationDraft>(() => (location ? { name: location.name, address: location.address } : emptyLocationDraft()));
+  const problemText = useProblemText();
+  const errorText = useIdErrorText();
+  // One id per create intent: a retry after a lost response replays instead of duplicating.
+  const [id] = useState(uuidv7);
+  const [existing, setExisting] = useState(initial);
+  const [name, setName] = useState(initial?.name ?? '');
+  const [address, setAddress] = useState(initial?.address ?? emptyAddress(country));
+  const [contact, setContact] = useState(() => contactDraftFrom(initial?.contact ?? null));
+  const [instructions, setInstructions] = useState(initial?.instructions ?? '');
   const [attempted, setAttempted] = useState(false);
-  const save = useSaveLocation(org);
-  const { input, errors } = validateLocationDraft(draft);
-  const shownMsg: Partial<Record<keyof LocationDraft, Msg>> = attempted ? errors : {};
-  const shown = { name: shownMsg.name && tm(shownMsg.name), address: shownMsg.address && tm(shownMsg.address) };
-  const set = (key: keyof LocationDraft) => (value: string) => {
-    if (save.error) save.reset();
-    setDraft((d) => ({ ...d, [key]: value }));
-  };
+  const save = useSaveLocation();
+  const archive = useArchiveLocation();
+  const noContact = vendor && isContactDraftBlank(contact);
+  const nameProblem = textProblem(name);
+  const addrProblems = addressProblems(address);
+  const cProblems = noContact ? {} : contactProblems(contact);
+  const invalid = !!nameProblem || Object.keys(addrProblems).length > 0 || Object.keys(cProblems).length > 0;
 
   return (
-    <View className="gap-4 rounded-xl border border-border bg-card p-4">
-      <AppText weight="semibold" className="text-lg text-card-foreground">
-        {location ? t(org.orgType === 'vendor' ? 'editWarehouse' : 'editLocation') : tm({ key: copy.add })}
-      </AppText>
-      <FieldGroup>
-        <Field label={t('name')}>
-          <Input value={draft.name} onChangeText={set('name')} accessibilityLabel={tmo('nameAria')} />
-          <FieldError>{shown.name}</FieldError>
-        </Field>
-        <Field label={t('address')}>
-          <Input value={draft.address} onChangeText={set('address')} accessibilityLabel={t('address')} />
-          <FieldError>{shown.address ?? (isServiceError(save.error, 'VALIDATION') ? errorText(save.error) : undefined)}</FieldError>
-        </Field>
-      </FieldGroup>
-      {save.error && !isServiceError(save.error, 'VALIDATION') ? <FormError error={save.error} /> : null}
-      <View className="flex-row gap-2">
-        <Button variant="outline" className="flex-1" onPress={onClose}>
-          {tc('cancel')}
-        </Button>
-        <Button
-          className="flex-1"
-          loading={save.isPending}
-          onPress={() => {
-            setAttempted(true);
-            if (input) save.mutate({ locationId: location?.id, input }, { onSuccess: onClose });
-          }}>
-          {location ? tc('save') : tc('add')}
-        </Button>
-      </View>
-    </View>
+    <FormScreen>
+      <Card>
+        <CardHeader title={existing ? t('locations.edit') : t('locations.add')} />
+        <FieldGroup>
+          <SaveError
+            error={save.error}
+            onLoadLatest={() =>
+              void onReload().then((fresh) => {
+                if (fresh) setExisting(fresh);
+                save.reset();
+              })
+            }
+          />
+          <Field label={t('locations.name')}>
+            <Input value={name} onChangeText={setName} accessibilityLabel={t('locations.name')} />
+            <FieldError>{attempted ? problemText(nameProblem) : undefined}</FieldError>
+          </Field>
+          <AddressFields value={address} onChange={setAddress} problems={attempted ? addrProblems : {}} />
+          <AppText weight="medium" className="text-sm text-foreground">
+            {vendor ? t('locations.contactOptional') : t('locations.contactRequired')}
+          </AppText>
+          <ContactFields value={contact} onChange={setContact} problems={attempted ? cProblems : {}} />
+          <Field label={t('locations.instructions')} description={t('locations.instructionsHint')}>
+            <Input value={instructions} onChangeText={setInstructions} multiline className="h-24 py-2" accessibilityLabel={t('locations.instructions')} />
+          </Field>
+          <Button
+            loading={save.isPending}
+            onPress={() => {
+              setAttempted(true);
+              if (invalid) return;
+              save.mutate(
+                {
+                  id,
+                  existing,
+                  fields: { name: name.trim(), address: cleanAddress(address), contact: noContact ? null : contactFromDraft(contact), instructions: textOrNull(instructions) },
+                },
+                { onSuccess: onClose },
+              );
+            }}>
+            {tc('save')}
+          </Button>
+          {existing && (
+            <Button
+              variant={existing.state === 'ACTIVE' ? 'destructive' : 'outline'}
+              loading={archive.isPending}
+              onPress={() => {
+                const run = () =>
+                  archive.mutate({ location: existing, archive: existing.state === 'ACTIVE' }, { onSuccess: onClose, onError: (e) => Alert.alert(errorText(e)) });
+                if (existing.state !== 'ACTIVE') return run();
+                void confirmAction(t('locations.archiveTitle', { name: existing.name }), t('locations.archiveDescription'), t('archive'), tc('cancel')).then(
+                  (ok) => ok && run(),
+                );
+              }}>
+              {existing.state === 'ACTIVE' ? t('archive') : t('restore')}
+            </Button>
+          )}
+          <Button variant="ghost" onPress={onClose}>
+            {tc('cancel')}
+          </Button>
+        </FieldGroup>
+      </Card>
+    </FormScreen>
   );
 }

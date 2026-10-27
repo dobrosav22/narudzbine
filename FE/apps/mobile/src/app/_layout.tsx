@@ -1,5 +1,5 @@
-// Before anything formats a message (Intl.PluralRules on Hermes).
-import '@/lib/intl-polyfills';
+// Before anything formats a message or generates an id (Intl.PluralRules, crypto on Hermes).
+import '@/lib/polyfills';
 import '../global.css';
 
 import { useEffect, useState } from 'react';
@@ -11,9 +11,10 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
-import { isServiceError } from '@repo/core';
+import { QUERY_DEFAULTS } from '@repo/core';
 import { sessionStore, useSession } from '@/lib/session';
 import { useTokenColors } from '@/theme';
+import { ReauthProvider } from '@/features/auth/reauth';
 import { initGuestLocale, useT } from '@/lib/i18n';
 
 SplashScreen.preventAutoHideAsync();
@@ -21,7 +22,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const dark = useColorScheme() === 'dark';
   const c = useTokenColors();
-  const t = useT('m.nav');
+  const t = useT('shell');
   const session = useSession();
   const [localeReady, setLocaleReady] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
@@ -31,18 +32,7 @@ export default function RootLayout() {
     GeistMono_400Regular,
     GeistMono_600SemiBold,
   });
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 30_000,
-            retry: (count, error) =>
-              count < 2 && !isServiceError(error, 'NOT_IMPLEMENTED') && !isServiceError(error, 'NOT_FOUND'),
-          },
-        },
-      }),
-  );
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: QUERY_DEFAULTS }));
 
   useEffect(() => {
     void initGuestLocale().finally(() => setLocaleReady(true));
@@ -50,10 +40,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     void sessionStore.init();
-    // Signing out must not leave the previous user's data in the cache.
+    // Signing out (or a revoked session) must not leave the previous person's data in the cache.
     let wasSignedIn = false;
     return sessionStore.subscribe(() => {
-      const signedIn = sessionStore.getState().status === 'signedIn';
+      const status = sessionStore.getState().status;
+      const signedIn = status === 'business' || status === 'admin';
       if (wasSignedIn && !signedIn) queryClient.clear();
       wasSignedIn = signedIn;
     });
@@ -67,8 +58,7 @@ export default function RootLayout() {
   }, [ready]);
   if (!ready) return null;
 
-  const signedIn = session.status === 'signedIn';
-  const orgType = signedIn ? session.membership.orgType : undefined;
+  const orgType = session.status === 'business' ? session.organization.type : undefined;
   const base = dark ? DarkTheme : DefaultTheme;
 
   return (
@@ -79,23 +69,26 @@ export default function RootLayout() {
           colors: { ...base.colors, primary: c.primary, background: c.background, card: c.background, text: c.foreground, border: c.border },
         }}>
         <StatusBar style="auto" />
-        {/* A guard turning false (sign-out, org switch) sends the user to `index`, which redirects by session. */}
+        <ReauthProvider>
+        {/* A guard turning false (sign-out, revoked session) sends the user to `index`, which redirects by session. */}
         <Stack screenOptions={{ headerTitleStyle: { fontFamily: 'Geist_600SemiBold' }, headerBackButtonDisplayMode: 'minimal' }}>
           <Stack.Screen name="index" options={{ headerShown: false }} />
-          {/* An admin session (v1.1) is neither signed out nor an org member: it lands on `index`, which explains the admin panel is web-only. */}
+          {/* A platform admin is neither signed out nor an org member: it lands on `index`, which explains the admin panel is web-only. */}
           <Stack.Protected guard={session.status === 'signedOut'}>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           </Stack.Protected>
-          <Stack.Protected guard={orgType === 'vendor'}>
+          <Stack.Protected guard={orgType === 'VENDOR'}>
             <Stack.Screen name="vendor" options={{ headerShown: false }} />
           </Stack.Protected>
-          <Stack.Protected guard={orgType === 'buyer'}>
+          <Stack.Protected guard={orgType === 'BUYER'}>
             <Stack.Screen name="buyer" options={{ headerShown: false }} />
             <Stack.Screen name="switch-vendor" options={{ presentation: 'modal', title: t('switchVendor') }} />
           </Stack.Protected>
-          {/* Invites work signed in or out (an existing buyer invited by a second vendor). */}
-          <Stack.Screen name="invite/[token]" options={{ title: t('invitation') }} />
+          {/* Emailed-link flows work signed in or out (deep links: narudzbine://invitation?token=…). */}
+          <Stack.Screen name="invitation" options={{ title: t('invitation') }} />
+          <Stack.Screen name="email-proof" options={{ title: t('emailProof') }} />
         </Stack>
+        </ReauthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

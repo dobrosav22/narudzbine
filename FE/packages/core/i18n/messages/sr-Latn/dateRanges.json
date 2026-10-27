@@ -1,0 +1,21 @@
+{
+  "label": "Period",
+  "preset": {
+    "7d": "Poslednjih 7 dana",
+    "30d": "Poslednjih 30 dana",
+    "90d": "Poslednjih 90 dana",
+    "12m": "Poslednjih 12 meseci",
+    "ytd": "Ova godina",
+    "5y": "Poslednjih 5 godina"
+  },
+  "custom": "Prilagođeni period",
+  "from": "Od",
+  "to": "Do",
+  "apply": "Primeni",
+  "problem": {
+    "INVALID_DATE": "Unesite oba datuma.",
+    "REVERSED": "Početak mora biti pre kraja.",
+    "FUTURE": "Datumi ne mogu biti u budućnosti.",
+    "TOO_LONG": "Period može da obuhvati najviše 60 kalendarskih meseci."
+  }
+}

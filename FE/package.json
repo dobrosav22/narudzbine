@@ -9,7 +9,9 @@
     "dev:web": "turbo run dev --filter=web",
     "dev:mobile": "turbo run dev --filter=mobile",
     "test": "turbo run test",
-    "verify:real-stubs": "pnpm --filter @repo/core verify:real-stubs"
+    "dev:api-proxy": "node e2e/api-proxy.mjs",
+    "dev:api-proxy:native": "node e2e/api-proxy.mjs --native",
+    "dev:cert": "openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj /CN=localhost -addext subjectAltName=DNS:localhost,IP:127.0.0.1 -keyout apps/web/certificates/localhost-key.pem -out apps/web/certificates/localhost.pem"
   },
   "packageManager": "pnpm@10.17.0",
   "devDependencies": {

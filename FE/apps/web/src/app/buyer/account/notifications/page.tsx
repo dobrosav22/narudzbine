@@ -1,7 +1,5 @@
-"use client";
-
-import { NotificationsPage } from "@/features/org-admin/pages";
+import { NotificationsPanel } from "@/features/account/notifications-panel";
 
 export default function Page() {
-  return <NotificationsPage />;
+  return <NotificationsPanel />;
 }

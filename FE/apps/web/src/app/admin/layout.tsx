@@ -1,11 +1,11 @@
 import { AppShell } from "@/features/shell/app-shell";
 import { RequireAdmin } from "@/features/shell/guards";
 
-/** v1.1 Platform Admin shell (02 "Admin panel"): web-only, role-gated under /admin. */
+/** Platform-admin shell: web-only, for PLATFORM_ADMIN accounts (no business membership). */
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <RequireAdmin>
-      <AppShell orgType="admin">{children}</AppShell>
+      <AppShell kind="admin">{children}</AppShell>
     </RequireAdmin>
   );
 }

@@ -1,27 +1,44 @@
+import type { Locale } from '../api/models';
+
 /**
- * UI languages (01 §12, 02 "Internationalization"): English and Serbian, Latin script only.
- * This is the UI language only — numbers, money and dates keep the regional LOCALE format
- * (config/env.ts, default bs-BA) whichever language is chosen.
+ * UI resource languages shipped by the frontend: English and Serbian (Latin, Ekavian).
+ * The backend's account/organization languages are en, sr-Latn-RS and bs-Latn-BA; Bosnian has no
+ * UI resources yet and renders with the Serbian Latin strings (docs/frontend/backend-gaps.md). Numbers,
+ * money and dates follow the organization country (format.ts), whichever language is chosen.
  */
 export type AppLocale = 'en' | 'sr-Latn';
 
 export const DEFAULT_LOCALE: AppLocale = 'en';
 
-/** For the language switcher: text labels, no flags (05 §6). Each name is written in its own language. */
+/** For the language switcher: text labels, no flags. Each name is written in its own language. */
 export const SUPPORTED_LOCALES: readonly { value: AppLocale; label: string }[] = [
   { value: 'en', label: 'English' },
   { value: 'sr-Latn', label: 'Srpski' },
+];
+
+/** Backend language preferences (Account.languageOverride / Organization.defaultLanguage). */
+export const BACKEND_LOCALES: readonly { value: Locale; label: string }[] = [
+  { value: 'en', label: 'English' },
+  { value: 'sr-Latn-RS', label: 'Srpski (latinica)' },
+  { value: 'bs-Latn-BA', label: 'Bosanski (latinica)' },
 ];
 
 export function isAppLocale(value: unknown): value is AppLocale {
   return value === 'en' || value === 'sr-Latn';
 }
 
+export function isBackendLocale(value: unknown): value is Locale {
+  return value === 'en' || value === 'sr-Latn-RS' || value === 'bs-Latn-BA';
+}
+
+/** Which UI resources render a backend language. */
+export function uiLocaleFor(locale: Locale | null | undefined): AppLocale {
+  return locale === 'sr-Latn-RS' || locale === 'bs-Latn-BA' ? 'sr-Latn' : 'en';
+}
+
 /**
- * [assumed] The first-login guess from the browser/device language list (01 §12: "defaults to
- * the browser/device locale if it matches, else English"). Serbian in either script maps to
- * sr-Latn (the only Serbian we ship), and so do Bosnian, Croatian and Montenegrin — mutually
- * intelligible Latin-script neighbours, and a closer match for BAM-market users than English.
+ * The pre-login guess from the browser/device language list: Serbian in either script and its
+ * Latin-script neighbours (Bosnian, Croatian, Montenegrin) map to sr-Latn; anything else English.
  */
 export function matchLocale(tags: readonly (string | null | undefined)[]): AppLocale {
   for (const tag of tags) {

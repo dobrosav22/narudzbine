@@ -1,7 +1,5 @@
-"use client";
-
-import { BuyerLocationsSettingsPage } from "@/features/org-admin/pages";
+import { LocationsPanel } from "@/features/org-admin/locations-panel";
 
 export default function Page() {
-  return <BuyerLocationsSettingsPage />;
+  return <LocationsPanel />;
 }

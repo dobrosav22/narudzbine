@@ -1,0 +1,33 @@
+{
+  "state": {
+    "ACTIVE": "Connected",
+    "DISCONNECTED": "Disconnected"
+  },
+  "formerPartner": "Former partner",
+  "partnerUnavailable": "Details unavailable",
+  "pager": {
+    "pageOf": "Page {page} of {pages}",
+    "page": "Page {page}",
+    "previous": "Previous page",
+    "next": "Next page"
+  },
+  "partner": {
+    "title": "Company details",
+    "frozen": "As recorded when you disconnected.",
+    "legalName": "Legal name",
+    "registration": "Registration no.",
+    "tax": "Tax ID",
+    "contact": "Business contact",
+    "noContact": "{name} hasn't shared a business contact."
+  },
+  "disconnect": {
+    "action": "Disconnect",
+    "title": "Disconnect from {name}?",
+    "description": "No new orders can be placed between you. Existing orders continue and stay in both histories; nothing is deleted. Trading again needs a new invitation from the vendor.",
+    "reason": "Reason",
+    "reasonHint": "{name} can read this.",
+    "keep": "Keep connected",
+    "confirm": "Disconnect",
+    "done": "Disconnected from {name}"
+  }
+}

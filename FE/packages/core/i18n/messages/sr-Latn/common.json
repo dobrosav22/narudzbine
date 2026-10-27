@@ -1,0 +1,23 @@
+{
+  "verbatim": "{text}",
+  "language": "Jezik",
+  "noPicture": "{name} (bez slike)",
+  "save": "Sačuvaj",
+  "cancel": "Otkaži",
+  "delete": "Obriši",
+  "edit": "Izmeni",
+  "remove": "Ukloni",
+  "discard": "Odbaci",
+  "done": "Gotovo",
+  "back": "Nazad",
+  "close": "Zatvori",
+  "search": "Pretraga",
+  "all": "Sve",
+  "none": "Nijedna",
+  "optional": "opciono",
+  "yes": "Da",
+  "no": "Ne",
+  "dash": "—",
+  "add": "Dodaj",
+  "apply": "Primeni"
+}

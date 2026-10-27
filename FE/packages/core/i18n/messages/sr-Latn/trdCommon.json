@@ -1,0 +1,33 @@
+{
+  "state": {
+    "ACTIVE": "Povezan",
+    "DISCONNECTED": "Prekinuto"
+  },
+  "formerPartner": "Bivši partner",
+  "partnerUnavailable": "Podaci nisu dostupni",
+  "pager": {
+    "pageOf": "Strana {page} od {pages}",
+    "page": "Strana {page}",
+    "previous": "Prethodna strana",
+    "next": "Sledeća strana"
+  },
+  "partner": {
+    "title": "Podaci o firmi",
+    "frozen": "Stanje zabeleženo u trenutku prekida saradnje.",
+    "legalName": "Pravni naziv",
+    "registration": "Matični broj",
+    "tax": "PIB",
+    "contact": "Poslovni kontakt",
+    "noContact": "{name} nije podelio poslovni kontakt."
+  },
+  "disconnect": {
+    "action": "Prekini saradnju",
+    "title": "Prekinuti saradnju sa firmom {name}?",
+    "description": "Između vas više ne mogu da se prave nove narudžbine. Postojeće narudžbine se nastavljaju i ostaju u istoriji obe strane; ništa se ne briše. Za ponovnu saradnju potrebna je nova pozivnica dobavljača.",
+    "reason": "Razlog",
+    "reasonHint": "{name} može da pročita ovo.",
+    "keep": "Zadrži saradnju",
+    "confirm": "Prekini saradnju",
+    "done": "Saradnja sa firmom {name} je prekinuta"
+  }
+}

@@ -1,45 +1,43 @@
 # Project memory — read in full before doing any work
 
-## Backend planning and business-rule approval (2026-10-12)
+## Real backend integration (2026-10-24, D-GOV-007) — read first
 
-The [root project instructions](../AGENTS.md) govern project phase, backend
-decisions, and business-rule approval. The build-log precedence rule below
-records historical frontend implementation guidance only: it does not approve
-backend behavior or resolve business-rule conflicts. Mocks, logs, and previous
-proposals are evidence. Under the user's 2026-10-15 delegation (D-GOV-005),
-the backend/infrastructure assistant chooses and records remaining recommendations
-without routine questionnaires. Existing approved requirements still govern;
-escalate only indispensable missing facts or irreconcilable requirement conflicts.
-This supersedes the earlier ask-every-choice rule, not frontend ownership.
-Application implementation awaits
-explicit planning-package approval and authorization. See
-[D-GOV-001](../DECISIONS.md#d-gov-001) for the user's approved clarification.
-See [AI operations](../AI_OPERATIONS.md) for the expected AI-led backend and
-infrastructure workflow. Historical frontend guidance below remains scoped to FE.
+The frontend runs against the real backend; the mock layer, mock types and demo accounts were
+removed. Authority, in order: [openapi.yaml](../openapi.yaml) (wire contract) and the backend
+rules in [design spec](../docs/architecture/design-spec.md) / [requirements](../docs/project/requirements.md); then
+[integration guide](../docs/frontend/integration-guide.md) (architecture, client usage, contract rules, i18n,
+local backend); then this file. Missing backend capability goes into
+[backend gaps](../docs/frontend/backend-gaps.md) — never into invented client data or mock fallbacks.
 
-This is a frontend-only build. The backend lives in `../BE/` and is out of
-scope — build against the mocked service layer described below, never
-against a real network call.
+The [root project instructions](../AGENTS.md) govern phase, approvals and business rules. The
+planning docs below are the original product intent; where they describe mock-era data shapes,
+endpoints (`04-data-contract-api-outline`) or concepts the backend does not have (self-serve
+signup, subscription tiers with prices, vendor-configured order statuses, org switching), the
+contract wins. Mocks, logs and previous proposals are historical evidence only.
+
+Checks before handing work back: `pnpm typecheck`, `pnpm lint`, `pnpm test` (core unit + i18n
+parity), `pnpm --filter web build`, and against the local backend the e2e checks in
+[e2e testing](../docs/frontend/e2e-testing.md).
 
 ## Planning docs (current version: v1.1)
 
-@../docs/01-product-overview-v1.1.md
-@../docs/02-frontend-agent-instructions-v1.1.md
-@../docs/03-frontend-screens-and-flows-v1.1.md
-@../docs/04-data-contract-api-outline-v1.1.md
-@../docs/05-visual-design-system-v1.1.md
+@../docs/product/product-overview.md
+@../docs/product/frontend-agent-instructions.md
+@../docs/product/screens-and-flows.md
+@../docs/product/data-contract-outline.md
+@../docs/product/visual-design-system.md
 
-The non-suffixed files (`01-product-overview.md`, etc.) are v1.0 — kept for
-history only. Always read the highest version number present in `/docs`;
-if a future v1.2 (etc.) shows up, that supersedes v1.1 the same way v1.1
-supersedes v1.0.
+These are the current (v1.1) product documents; v1.0 is kept for history in
+`docs/archive/product-v1.0/`. A future revision replaces the files in
+`docs/product/` and moves the previous version to the archive.
+Index of all documentation: [docs/README.md](../docs/README.md).
 
 ## Build log (what's actually happened since)
 
-@BUILD_LOG.md
+@../docs/frontend/build-log.md
 
 **The build log takes precedence over the planning docs wherever the two
-disagree** — the docs are the original plan, the log is what actually got
+disagree** (and the backend contract takes precedence over both) — the docs are the original plan, the log is what actually got
 built and decided since. If a docs file describes something the log later
 overrode, follow the log.
 
@@ -47,6 +45,6 @@ overrode, follow the log.
 
 Whenever you make a decision the planning docs didn't cover, deviate from
 what they say, resolve one of the open questions listed in
-`01-product-overview-v1.1.md` §13, or finish a meaningful chunk of work —
-append a dated entry to `BUILD_LOG.md` before ending your turn. See that
+`docs/product/product-overview.md` §13, or finish a meaningful chunk of work —
+append a dated entry to `docs/frontend/build-log.md` before ending your turn. See that
 file's own header for the entry format. Don't wait to be asked.

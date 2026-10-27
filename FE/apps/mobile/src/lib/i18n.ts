@@ -4,25 +4,28 @@ import { useLocales } from 'expo-localization';
 import { createInstance } from 'i18next';
 import ICU from 'i18next-icu';
 import {
+  api,
+  data,
   DEFAULT_LOCALE,
+  effectiveLocale,
   isAppLocale,
-  isServiceError,
   matchLocale,
   MESSAGES,
-  saveSessionLocale,
-  services,
-  sessionLocale,
+  problemMsg,
   SUPPORTED_LOCALES,
+  uiLocaleFor,
   type AppLocale,
+  type Locale,
+  type Messages,
   type Msg,
 } from '@repo/core';
 import { sessionStore, useSession } from '@/lib/session';
 
 /*
- * Mobile i18n (02 "Internationalization"): i18next + ICU reading the shared key files in
- * @repo/core/i18n, device language from expo-localization. The UI language is the signed-in
- * person's preferredLocale; before login it's a guest choice (the language row on the auth
- * screens) or the device language. Components never branch on the locale — they call t().
+ * Mobile i18n: i18next + ICU reading the shared key files in @repo/core/i18n, device language
+ * from expo-localization. Signed in, the UI language follows the account's language override,
+ * else the organization default; before login it's a guest choice (the language row on the
+ * auth screens) or the device language. Components never branch on the locale — they call t().
  */
 
 // Our own instance (not i18next's global default), so nothing else can change its language.
@@ -54,7 +57,7 @@ export async function initGuestLocale(): Promise<void> {
   listeners.forEach((l) => l());
 }
 
-function setGuestLocale(locale: AppLocale) {
+export function setGuestLocale(locale: AppLocale) {
   guest = locale;
   listeners.forEach((l) => l());
   void AsyncStorage.setItem(GUEST_KEY, locale).catch(() => undefined);
@@ -70,27 +73,25 @@ function useGuestLocale(): AppLocale | undefined {
   );
 }
 
-/** The language the UI is in right now: the person's choice, else the guest's, else the device's (01 §12). */
+/** The language the UI is in right now: the account's, else the guest's choice, else the device's. */
 export function useUiLocale(): AppLocale {
   const session = useSession();
   const chosen = useGuestLocale();
   const device = useLocales();
-  return sessionLocale(session) ?? chosen ?? matchLocale(device.map((l) => l.languageTag));
+  const backend = effectiveLocale(session);
+  return backend ? uiLocaleFor(backend) : chosen ?? matchLocale(device.map((l) => l.languageTag));
 }
 
-/** Switch language: saved on every user record of the signed-in person, else remembered on this device. */
-export async function changeLocale(locale: AppLocale): Promise<void> {
+/** Save the signed-in person's language override (null = follow the organization default). */
+export async function changeLanguage(next: Locale | null): Promise<void> {
   const state = sessionStore.getState();
-  if (state.status === 'signedIn' || state.status === 'admin') {
-    await saveSessionLocale(services, state, locale);
-    await sessionStore.refresh();
-  }
-  setGuestLocale(locale);
+  if (state.status !== 'business' && state.status !== 'admin') return;
+  const account = await data(api.PATCH('/me/language', { body: { expectedRevision: state.account.revision, languageOverride: next } }));
+  sessionStore.update({ account });
 }
 
 // ── Translating ─────────────────────────────────────────────────────────
 
-type Messages = (typeof MESSAGES)['en'];
 type Leaves<T, P extends string = ''> = {
   [K in keyof T & string]: T[K] extends string ? `${P}${K}` : Leaves<T[K], `${P}${K}.`>;
 }[keyof T & string];
@@ -108,7 +109,7 @@ function translate(locale: AppLocale, key: string, values?: Values): string {
 }
 
 /**
- * `const t = useT('cart'); t('title')` — keys are checked against en.json. Pass a namespace
+ * `const t = useT('cart'); t('title')` — keys are checked against the English resources. Pass a namespace
  * for short keys; with none, keys are full paths ("common.save").
  */
 export function useT<N extends string>(ns: N): (key: KeysIn<N>, values?: Values) => string;
@@ -124,17 +125,8 @@ export function useMsg() {
   return useCallback((m: Msg) => translate(locale, m.key, m.values), [locale]);
 }
 
-/** Any caught error as text in the UI language: translated service errors, else a generic line. */
+/** Any caught error as text in the UI language: the backend problem code's message, else by status. */
 export function useErrorText() {
   const tm = useMsg();
-  return useCallback(
-    (e: unknown): string => {
-      if (isServiceError(e) && e.msg) return tm(e.msg);
-      if (isServiceError(e, 'NOT_IMPLEMENTED')) return tm({ key: 'errors.notImplemented', values: { operation: String(e.details?.operation ?? '') } });
-      // [assumed] A real backend's untranslated message is shown as-is rather than hidden.
-      if (e instanceof Error && e.message) return e.message;
-      return tm({ key: 'errors.unknown' });
-    },
-    [tm],
-  );
+  return useCallback((e: unknown): string => tm(problemMsg(e)), [tm]);
 }

@@ -1,138 +1,286 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { loadVendorPlan, services, type BuyerProductPrice, type PriceTierInput, type ProductFormValues } from '@repo/core';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  acknowledgeReconciliationLines,
+  adjustStock,
+  bulkEditProducts,
+  catalogueKeys,
+  catalogueQueries,
+  confirmCsvImport,
+  confirmStock,
+  createProduct,
+  createTaxonomyItem,
+  deleteTaxonomyItem,
+  disableTracking,
+  enableTracking,
+  inventoryKeys,
+  inventoryQueries,
+  planKeys,
+  prepareReconciliation,
+  previewCsvImport,
+  removeAgreedPrice,
+  renameTaxonomyItem,
+  runProductCommand,
+  setAgreedPrice,
+  setProductFeatured,
+  setProductGallery,
+  setStock,
+  updatePricing,
+  updateProduct,
+  type AgreedPriceInput,
+  type BulkChange,
+  type Product,
+  type ProductCommand,
+  type ProductInput,
+  type ProductListQuery,
+  type ProductUpdate,
+  type PricingUpdate,
+  type ReconciliationCandidate,
+  type StockAbsolute,
+  type StockDelta,
+  type TaxonomyKind,
+} from '@repo/core';
 
-/** Same key shapes as apps/web's vendor-catalogue/queries.ts. */
-export const keys = {
-  vendorOrg: (vendorOrgId: string) => ['vendorOrg', vendorOrgId] as const,
-  products: (vendorOrgId: string) => ['products', vendorOrgId] as const,
-  product: (productId: string) => ['product', productId] as const,
-  priceTiers: (productId: string) => ['priceTiers', productId] as const,
-  buyerOverrides: (vendorOrgId: string, productId: string) => ['buyerOverrides', vendorOrgId, productId] as const,
-  buyerConnections: (vendorOrgId: string) => ['buyerConnections', vendorOrgId] as const,
-  categories: (vendorOrgId: string) => ['categories', vendorOrgId] as const,
-  tags: (vendorOrgId: string) => ['tags', vendorOrgId] as const,
-  subscription: (vendorOrgId: string) => ['subscription', vendorOrgId] as const,
-};
+/*
+ * Vendor catalogue hooks over @repo/core's factories. Every catalogue write invalidates the
+ * ['catalogue'] prefix (lists, pricing, plan usage); stock writes invalidate ['inventory'].
+ * Product responses are full resources, so they also patch the single-product cache.
+ */
 
-export function useVendorOrg(vendorOrgId: string) {
-  return useQuery({ queryKey: keys.vendorOrg(vendorOrgId), queryFn: () => services.vendorOrgs.getVendorOrg(vendorOrgId) });
+export function useTaxonomy<K extends TaxonomyKind>(kind: K) {
+  return useQuery(catalogueQueries.taxonomy(kind));
 }
 
-export function useVendorProducts(params: { vendorOrgId: string; search: string; categoryId?: string }) {
-  return useQuery({
-    queryKey: [...keys.products(params.vendorOrgId), { search: params.search, categoryId: params.categoryId }],
-    queryFn: () =>
-      services.catalogue.listProducts({
-        vendorOrgId: params.vendorOrgId,
-        search: params.search || undefined,
-        categoryId: params.categoryId,
-        includeInactive: true,
-      }),
-    placeholderData: (prev) => prev,
+export function useProducts(q: ProductListQuery) {
+  return useQuery({ ...catalogueQueries.products(q), placeholderData: keepPreviousData });
+}
+
+/** Offset pages as an infinite list (mobile scrolling). */
+export function useInfiniteProducts(q: Omit<ProductListQuery, 'page'>) {
+  return useInfiniteQuery({
+    queryKey: [...catalogueQueries.products({ ...q, page: 0 }).queryKey, 'infinite'],
+    queryFn: ({ pageParam }: { pageParam: number }) => catalogueQueries.products({ ...q, page: pageParam }).queryFn(),
+    initialPageParam: 0,
+    getNextPageParam: (last, _all, lastPage) => (last.items.length < last.size ? undefined : lastPage + 1),
+    placeholderData: keepPreviousData,
   });
 }
 
-export function useCategories(vendorOrgId: string) {
-  return useQuery({ queryKey: keys.categories(vendorOrgId), queryFn: () => services.catalogue.listCategories(vendorOrgId) });
+export function useAllProducts() {
+  return useQuery(catalogueQueries.allProducts());
 }
 
-export function useTags(vendorOrgId: string) {
-  return useQuery({ queryKey: keys.tags(vendorOrgId), queryFn: () => services.catalogue.listTags(vendorOrgId) });
+export function useProduct(id: string | undefined) {
+  return useQuery({ ...catalogueQueries.product(id ?? ''), enabled: !!id });
 }
 
-/** Usage + tier via loadVendorPlan — the single usage read (02 v1.1) behind Add Product, Invite and the plan screen. */
-export function useVendorPlan(vendorOrgId: string) {
-  return useQuery({ queryKey: keys.subscription(vendorOrgId), queryFn: () => loadVendorPlan(services, vendorOrgId) });
+export function usePricing(productId: string | undefined) {
+  return useQuery({ ...catalogueQueries.pricing(productId ?? ''), enabled: !!productId });
 }
 
-/** Under the subscription prefix, so a new request refreshes usage and history together. */
-export function useUpgradeRequests(vendorOrgId: string) {
-  return useQuery({
-    queryKey: [...keys.subscription(vendorOrgId), 'requests'],
-    queryFn: () => services.subscription.listUpgradeRequests(vendorOrgId),
-  });
+/** Pricing for each listed product (the product list carries no prices). */
+export function usePricings(productIds: string[]) {
+  return useQueries({ queries: productIds.map((id) => catalogueQueries.pricing(id)) });
 }
 
-export function useProduct(productId: string | undefined) {
-  return useQuery({
-    queryKey: keys.product(productId ?? ''),
-    queryFn: () => services.catalogue.getProduct(productId!),
-    enabled: !!productId,
-  });
+export function usePlanUsage() {
+  return useQuery(catalogueQueries.planUsage());
 }
 
-export function usePriceTiers(productId: string | undefined) {
-  return useQuery({
-    queryKey: keys.priceTiers(productId ?? ''),
-    queryFn: () => services.catalogue.listPriceTiers(productId!),
-    enabled: !!productId,
-  });
+export function useCatalogueBuyers() {
+  return useQuery(catalogueQueries.buyers());
 }
 
-export function useBuyerOverrides(vendorOrgId: string, productId: string) {
-  return useQuery({
-    queryKey: keys.buyerOverrides(vendorOrgId, productId),
-    queryFn: () => services.pricing.listBuyerOverrides({ vendorOrgId, productId }),
-  });
+export function useAgreedPrices(relationshipIds: string[]) {
+  return useQueries({ queries: relationshipIds.map((id) => catalogueQueries.agreedPrices(id)) });
 }
 
-export function useBuyerConnections(vendorOrgId: string) {
-  return useQuery({ queryKey: keys.buyerConnections(vendorOrgId), queryFn: () => services.buyers.listConnections(vendorOrgId) });
-}
-
-function useInvalidateCatalogue(vendorOrgId: string) {
+function useCatalogueInvalidation() {
   const qc = useQueryClient();
-  return (productId?: string) =>
-    Promise.all([
-      qc.invalidateQueries({ queryKey: keys.products(vendorOrgId) }),
-      qc.invalidateQueries({ queryKey: keys.subscription(vendorOrgId) }),
-      productId ? qc.invalidateQueries({ queryKey: keys.product(productId) }) : undefined,
-      productId ? qc.invalidateQueries({ queryKey: keys.priceTiers(productId) }) : undefined,
-      qc.invalidateQueries({ queryKey: ['buyerCatalogue', vendorOrgId] }),
-    ]);
-}
-
-export function useSaveProduct(vendorOrgId: string) {
-  const invalidate = useInvalidateCatalogue(vendorOrgId);
-  return useMutation({
-    mutationFn: async (input: { productId?: string; values: ProductFormValues; tiers: PriceTierInput[] }) => {
-      const product = input.productId
-        ? await services.catalogue.updateProduct(input.productId, input.values)
-        : await services.catalogue.createProduct({ ...input.values, vendorOrgId });
-      await services.catalogue.setPriceTiers(product.id, input.tiers);
-      return product;
+  return {
+    qc,
+    product: (product: Product) => {
+      qc.setQueryData(catalogueKeys.product(product.id), product);
+      // Product counts feed the plan usage shown elsewhere (non-archived product limit).
+      return Promise.all([qc.invalidateQueries({ queryKey: catalogueKeys.all }), qc.invalidateQueries({ queryKey: planKeys.current() })]);
     },
-    onSuccess: (product) => invalidate(product.id),
+    all: () => Promise.all([qc.invalidateQueries({ queryKey: catalogueKeys.all }), qc.invalidateQueries({ queryKey: planKeys.current() })]),
+  };
+}
+
+export function useCreateProduct() {
+  const inv = useCatalogueInvalidation();
+  return useMutation({ mutationFn: (body: ProductInput) => createProduct(body), onSuccess: inv.product });
+}
+
+export function useUpdateProduct(productId: string) {
+  const inv = useCatalogueInvalidation();
+  return useMutation({ mutationFn: (body: ProductUpdate) => updateProduct(productId, body), onSuccess: inv.product });
+}
+
+export function useUpdatePricing(productId: string) {
+  const inv = useCatalogueInvalidation();
+  return useMutation({
+    mutationFn: (body: PricingUpdate) => updatePricing(productId, body),
+    onSuccess: (pricing) => {
+      inv.qc.setQueryData(catalogueKeys.pricing(productId), pricing);
+      return inv.all();
+    },
   });
 }
 
-export function useDeleteProduct(vendorOrgId: string) {
-  const invalidate = useInvalidateCatalogue(vendorOrgId);
-  return useMutation({ mutationFn: (productId: string) => services.catalogue.deleteProduct(productId), onSuccess: () => invalidate() });
-}
-
-export function useSetBuyerOverride(vendorOrgId: string, productId: string) {
+export function useProductCommand(productId: string) {
+  const inv = useCatalogueInvalidation();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { buyerOrgId: string; price: number }) => services.pricing.setBuyerOverride({ vendorOrgId, productId, ...input }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.buyerOverrides(vendorOrgId, productId) }),
+    mutationFn: ({ command, expectedRevision }: { command: ProductCommand; expectedRevision: string }) =>
+      runProductCommand(productId, command, expectedRevision),
+    onSuccess: async (product) => {
+      await inv.product(product);
+      // Archive/restore/activation change what stock confirmation and offers look like.
+      await qc.invalidateQueries({ queryKey: inventoryKeys.all });
+    },
   });
 }
 
-export function useDeleteBuyerOverride(vendorOrgId: string, productId: string) {
-  const qc = useQueryClient();
+export function useSetFeatured() {
+  const inv = useCatalogueInvalidation();
   return useMutation({
-    mutationFn: (override: BuyerProductPrice) => services.pricing.deleteBuyerOverride(override.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.buyerOverrides(vendorOrgId, productId) }),
+    mutationFn: ({ product, featured }: { product: Product; featured: boolean }) =>
+      setProductFeatured(product.id, { expectedRevision: product.revision, featured }),
+    onSuccess: inv.product,
   });
 }
 
-/** v1.1: vendors request a plan; only the Platform Admin (web) applies it. */
-export function useRequestUpgrade(vendorOrgId: string) {
-  const qc = useQueryClient();
+export function useSetGallery(productId: string) {
+  const inv = useCatalogueInvalidation();
   return useMutation({
-    mutationFn: ({ tierId, message }: { tierId: string; message: string }) =>
-      services.subscription.requestUpgrade({ vendorOrgId, requestedTierId: tierId, message }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.subscription(vendorOrgId) }),
+    mutationFn: ({ expectedRevision, assetIds }: { expectedRevision: string; assetIds: string[] }) =>
+      setProductGallery(productId, expectedRevision, assetIds),
+    onSuccess: inv.product,
   });
+}
+
+export function useBulkEdit() {
+  const inv = useCatalogueInvalidation();
+  return useMutation({ mutationFn: (body: BulkChange) => bulkEditProducts(body), onSuccess: () => inv.all() });
+}
+
+export function useTaxonomyMutations(kind: TaxonomyKind) {
+  const inv = useCatalogueInvalidation();
+  return {
+    create: useMutation({ mutationFn: (body: { id: string; name: string }) => createTaxonomyItem(kind, body), onSuccess: () => inv.all() }),
+    rename: useMutation({
+      mutationFn: ({ id, ...body }: { id: string; expectedRevision: string; name: string }) => renameTaxonomyItem(kind, id, body),
+      onSuccess: () => inv.all(),
+    }),
+    remove: useMutation({
+      mutationFn: ({ id, expectedRevision }: { id: string; expectedRevision: string; name: string }) => deleteTaxonomyItem(kind, id, expectedRevision),
+      onSuccess: () => inv.all(),
+    }),
+  };
+}
+
+export function useAgreedPriceMutations(productId: string) {
+  const inv = useCatalogueInvalidation();
+  return {
+    set: useMutation({
+      mutationFn: ({ relationshipId, body }: { relationshipId: string; body: AgreedPriceInput }) => setAgreedPrice(relationshipId, productId, body),
+      onSuccess: (_r, v) => inv.qc.invalidateQueries({ queryKey: catalogueKeys.agreedPrices(v.relationshipId) }),
+    }),
+    remove: useMutation({
+      mutationFn: ({ relationshipId, expectedRevision }: { relationshipId: string; expectedRevision: string }) =>
+        removeAgreedPrice(relationshipId, productId, expectedRevision),
+      onSuccess: (_r, v) => inv.qc.invalidateQueries({ queryKey: catalogueKeys.agreedPrices(v.relationshipId) }),
+    }),
+  };
+}
+
+export function useImportPreview(id: string | null) {
+  return useQuery({ ...catalogueQueries.importPreview(id ?? ''), enabled: !!id, staleTime: Infinity, retry: false });
+}
+
+export function useImportMutations() {
+  const inv = useCatalogueInvalidation();
+  return {
+    preview: useMutation({ mutationFn: (csv: Blob) => previewCsvImport(csv) }),
+    confirm: useMutation({
+      mutationFn: ({ previewId, expectedRevision }: { previewId: string; expectedRevision: string }) => confirmCsvImport(previewId, expectedRevision),
+      onSuccess: () => inv.all(),
+    }),
+  };
+}
+
+// ── Inventory ──────────────────────────────────────────────────────────
+
+export function useTracking() {
+  return useQuery(inventoryQueries.tracking());
+}
+
+export function useStock(productId: string | undefined) {
+  return useQuery({ ...inventoryQueries.stock(productId ?? ''), enabled: !!productId });
+}
+
+export function useStocks(productIds: string[]) {
+  return useQueries({ queries: productIds.map((id) => inventoryQueries.stock(id)) });
+}
+
+export function useProductsById(productIds: string[]) {
+  return useQueries({ queries: productIds.map((id) => catalogueQueries.product(id)) });
+}
+
+export function useStockEvents(productId?: string) {
+  return useInfiniteQuery({
+    ...inventoryQueries.events(productId),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+}
+
+export function useReconciliation(id: string | null) {
+  return useQuery({ ...inventoryQueries.reconciliation(id ?? ''), enabled: !!id, retry: false });
+}
+
+export function useReconciliationLines(id: string | null) {
+  return useInfiniteQuery({
+    ...inventoryQueries.reconciliationLines(id ?? ''),
+    enabled: !!id,
+    retry: false,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+}
+
+export function useInventoryMutations() {
+  const qc = useQueryClient();
+  const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: inventoryKeys.all }), qc.invalidateQueries({ queryKey: catalogueKeys.all })]);
+  return {
+    disable: useMutation({ mutationFn: (expectedRevision: string) => disableTracking(expectedRevision), onSuccess: refresh }),
+    prepare: useMutation({ mutationFn: () => prepareReconciliation() }),
+    acknowledge: useMutation({
+      mutationFn: ({ previewId, expectedRevision, lines }: { previewId: string; expectedRevision: string; lines: ReconciliationCandidate[] }) =>
+        acknowledgeReconciliationLines(previewId, expectedRevision, lines),
+      onSuccess: (_r, v) => qc.invalidateQueries({ queryKey: inventoryKeys.reconciliation(v.previewId) }),
+    }),
+    enable: useMutation({
+      mutationFn: ({ previewId, expectedRevision }: { previewId: string; expectedRevision: string }) => enableTracking(previewId, expectedRevision),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+export function useStockMutations(productId: string) {
+  const qc = useQueryClient();
+  const done = (stock: unknown) => {
+    qc.setQueryData(inventoryKeys.stock(productId), stock);
+    return qc.invalidateQueries({ queryKey: inventoryKeys.all });
+  };
+  return {
+    set: useMutation({ mutationFn: (body: StockAbsolute) => setStock(productId, body), onSuccess: done }),
+    adjust: useMutation({
+      mutationFn: ({ body, key }: { body: StockDelta; key: string }) => adjustStock(productId, body, key),
+      // The replayed original response is not the current balance: refetch instead of patching.
+      onSuccess: () => qc.invalidateQueries({ queryKey: inventoryKeys.all }),
+    }),
+    confirm: useMutation({ mutationFn: (expectedRevision: string) => confirmStock(productId, expectedRevision), onSuccess: done }),
+  };
 }

@@ -1,0 +1,26 @@
+{
+  "ORDER_SUBMITTED": {
+    "label": "New order",
+    "description": "A buyer submits an order to you"
+  },
+  "ORDER_STATUS_CHANGED": {
+    "label": "Order status changed",
+    "description": "An order is accepted, rejected, moved to a stage, dispatched or delivered"
+  },
+  "CANCELLATION_REQUESTED": {
+    "label": "Cancellation requested",
+    "description": "A buyer asks to cancel an accepted order"
+  },
+  "CANCELLATION_RESOLVED": {
+    "label": "Cancellation answered",
+    "description": "A cancellation request is approved, rejected or withdrawn"
+  },
+  "MESSAGE_CREATED": {
+    "label": "New order message",
+    "description": "Someone writes on an order"
+  },
+  "RELATIONSHIP_DISCONNECTED": {
+    "label": "Partner disconnected",
+    "description": "A trading relationship ends"
+  }
+}

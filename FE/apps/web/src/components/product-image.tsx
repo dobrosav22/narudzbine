@@ -7,9 +7,9 @@ import { useTranslations } from "next-intl";
 import { cn } from "cn";
 
 /**
- * A product's picture (Product.imageUrl), or a neutral placeholder when there is none or
- * it fails to load. `unoptimized`: images are data:/blob: URLs while mocked and the real
- * host is unknown (04 has no upload endpoint yet), so there's nothing for Next to optimize.
+ * A product's picture (a READY media asset's content URL), or a neutral placeholder when there
+ * is none or it fails to load. `unoptimized`: the content route needs the session cookie and the
+ * API host differs per environment, so the Next image optimizer must not fetch it server-side.
  * Size and shape come from `className` (e.g. "size-10" or "aspect-[4/3] w-full").
  */
 export function ProductImage({

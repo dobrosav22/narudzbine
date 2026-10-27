@@ -1,0 +1,41 @@
+{
+  "title": "Vendors",
+  "subtitle": "The suppliers your business orders from.",
+  "tabs": {
+    "active": "Connected",
+    "disconnected": "Disconnected"
+  },
+  "incoming": {
+    "title": "{count, plural, one {# invitation to connect} other {# invitations to connect}}",
+    "item": "Sent to {email}; open the link in that email to accept (expires {date})."
+  },
+  "emptyTitle": "No vendors yet",
+  "emptyDescription": "Vendors invite you to trade; their invitation arrives by email.",
+  "emptyDisconnectedTitle": "No former vendors",
+  "emptyDisconnectedDescription": "Vendors you stopped trading with stay listed here.",
+  "vendor": "Vendor",
+  "connectedSince": "Connected since",
+  "disconnectedOn": "Disconnected",
+  "actions": "Actions",
+  "current": "Open catalogue",
+  "browse": "Browse",
+  "since": "Connected since {date}",
+  "disconnectedSince": "Disconnected {date}",
+  "detail": {
+    "notFoundTitle": "Vendor not found",
+    "notFoundDescription": "This relationship doesn't exist or isn't yours.",
+    "allVendors": "All vendors",
+    "back": "Back to vendors",
+    "formerVendor": "Former vendor",
+    "since": "Connected since {date}",
+    "disconnectedOn": "Disconnected {date}",
+    "browse": "Browse catalogue",
+    "orders": "Orders",
+    "disconnectedTitle": "Disconnected",
+    "reason": "Reason: {reason}",
+    "disconnectedNote": "Your past orders stay available. To trade again, ask the vendor for a new invitation.",
+    "pricesReviewTitle": "Agreed prices under review",
+    "pricesReviewDescription": "After reconnecting, {name} reviews your previously agreed prices; until then the ordinary prices may apply.",
+    "noPartnerDetails": "Company details aren't available for this relationship."
+  }
+}

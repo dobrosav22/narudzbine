@@ -1,0 +1,13 @@
+{
+  "title": "Favorites",
+  "from": "Shared with your team · from {vendor}",
+  "shared": "Shared with your team",
+  "emptyTitle": "No favorites from this vendor yet",
+  "emptyDescription": "Tap the heart on any product to keep it here for quick reordering. Favorites are shared with your whole team.",
+  "browse": "Browse the catalogue",
+  "unavailableTitle": "No longer available",
+  "unavailableDescription": "These saved products can't be ordered right now (unpublished, or the vendor isn't connected). You can remove them.",
+  "savedOn": "Saved {date}",
+  "removeUnavailable": "Remove the favorite saved {date}",
+  "remove": "Remove"
+}

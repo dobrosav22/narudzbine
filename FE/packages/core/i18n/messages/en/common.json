@@ -1,0 +1,23 @@
+{
+  "verbatim": "{text}",
+  "language": "Language",
+  "noPicture": "{name} (no picture)",
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "remove": "Remove",
+  "discard": "Discard",
+  "done": "Done",
+  "back": "Back",
+  "close": "Close",
+  "search": "Search",
+  "all": "All",
+  "none": "None",
+  "optional": "optional",
+  "yes": "Yes",
+  "no": "No",
+  "dash": "—",
+  "add": "Add",
+  "apply": "Apply"
+}

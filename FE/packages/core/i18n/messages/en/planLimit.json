@@ -1,0 +1,7 @@
+{
+  "titleProducts": "You've reached your plan's product limit",
+  "titleBuyers": "You've reached your plan's buyer limit",
+  "link": "View plan",
+  "genericProducts": "Your plan's product limit is reached. Request a bigger plan to add more.",
+  "genericBuyers": "Your plan's active buyer limit is reached. Request a bigger plan to connect more buyers."
+}

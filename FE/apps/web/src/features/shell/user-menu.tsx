@@ -4,7 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { BellIcon, BuildingIcon, ChevronsUpDownIcon, LogOutIcon, MonitorIcon, MoonIcon, SunIcon, UserRoundIcon } from "lucide-react";
+import {
+  BellIcon,
+  ChevronsUpDownIcon,
+  LanguagesIcon,
+  LogOutIcon,
+  MonitorIcon,
+  MoonIcon,
+  ShieldIcon,
+  SunIcon,
+  UserRoundIcon,
+} from "lucide-react";
+import { toast } from "sonner";
+import { BACKEND_LOCALES, isBackendLocale } from "@repo/core";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -21,19 +33,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { homePath, initials, sessionStore, useSignedIn } from "@/lib/session";
+import { changeLanguage, useErrorText } from "@/lib/i18n";
+import { initials, sessionStore, useSession } from "@/lib/session";
+import type { ShellKind } from "./nav";
 
-/**
- * Sidebar footer: who you are, the org switcher (only when one login holds
- * several memberships — 03 → "Navigation shape"), account (profile, notifications),
- * theme, sign out.
- */
-export function UserMenu() {
+const INHERIT = "inherit";
+
+/** Sidebar footer: who you are, account pages, language, theme and sign out. No organization switcher exists. */
+export function UserMenu({ kind }: { kind: ShellKind }) {
   const router = useRouter();
-  const { session, membership } = useSignedIn();
+  const state = useSession();
   const { theme, setTheme } = useTheme();
   const t = useTranslations();
-  const multiOrg = session.memberships.length > 1;
+  const errorText = useErrorText();
+  if (state.status !== "business" && state.status !== "admin") return null;
+  const { account } = state;
+  const subtitle = state.status === "business" ? state.organization.displayName : t("shell.platformAdmin");
+  const base = `/${kind}/account`;
+  const defaultLabel =
+    state.status === "business"
+      ? t("shell.languageDefault", { language: BACKEND_LOCALES.find((l) => l.value === state.organization.defaultLanguage)?.label ?? "" })
+      : t("shell.languageDefault", { language: "English" });
 
   return (
     <SidebarMenu>
@@ -42,11 +62,11 @@ export function UserMenu() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" aria-label={t("shell.accountMenu")}>
               <Avatar className="size-8 rounded-md">
-                <AvatarFallback className="rounded-md">{initials(membership.user.name)}</AvatarFallback>
+                <AvatarFallback className="rounded-md">{initials(account.displayName)}</AvatarFallback>
               </Avatar>
               <span className="flex min-w-0 flex-col gap-0.5 leading-none">
-                <span className="truncate font-medium">{membership.user.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{membership.org.name}</span>
+                <span className="truncate font-medium">{account.displayName}</span>
+                <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
               </span>
               <ChevronsUpDownIcon className="ml-auto" />
             </SidebarMenuButton>
@@ -54,55 +74,57 @@ export function UserMenu() {
           <DropdownMenuContent side="top" align="start" className="min-w-60">
             <DropdownMenuGroup>
               <DropdownMenuLabel className="font-normal">
-                <span className="block font-medium">{membership.user.name}</span>
-                <span className="block text-xs text-muted-foreground">{session.email}</span>
+                <span className="block font-medium">{account.displayName}</span>
+                <span className="block text-xs text-muted-foreground">{account.email}</span>
+                {account.role && <span className="block text-xs text-muted-foreground">{t(`shell.roles.${account.role}`)}</span>}
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href={`/${membership.orgType}/account`}>
+                <Link href={base}>
                   <UserRoundIcon />
                   {t("shell.profile")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/${membership.orgType}/account/notifications`}>
-                  <BellIcon />
-                  {t("shell.notifications")}
+                <Link href={`${base}/security`}>
+                  <ShieldIcon />
+                  {t("shell.security")}
                 </Link>
               </DropdownMenuItem>
+              {kind !== "admin" && (
+                <DropdownMenuItem asChild>
+                  <Link href={`${base}/notifications`}>
+                    <BellIcon />
+                    {t("shell.notificationSettings")}
+                  </Link>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
-            {multiOrg && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">{t("shell.organizations")}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <LanguagesIcon />
+                  {t("common.language")}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup
-                    value={membership.org.id}
-                    onValueChange={(orgId) => {
-                      void sessionStore.selectMembership(orgId).then(() => {
-                        const s = sessionStore.getState();
-                        if (s.status === "signedIn") router.push(homePath(s.membership));
-                      });
+                    value={account.languageOverride ?? INHERIT}
+                    onValueChange={(v) => {
+                      const next = v === INHERIT ? null : isBackendLocale(v) ? v : null;
+                      void changeLanguage(next).catch((e: unknown) => toast.error(errorText(e)));
                     }}
                   >
-                    {session.memberships.map((m) => (
-                      <DropdownMenuRadioItem key={m.org.id} value={m.org.id}>
-                        <BuildingIcon />
-                        <span className="flex flex-col">
-                          <span>{m.org.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {m.orgType === "vendor" ? t("shell.vendor") : t("shell.buyer")}
-                          </span>
-                        </span>
+                    <DropdownMenuRadioItem value={INHERIT}>{defaultLabel}</DropdownMenuRadioItem>
+                    {BACKEND_LOCALES.map((l) => (
+                      <DropdownMenuRadioItem key={l.value} value={l.value} lang={l.value}>
+                        {l.label}
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
-                </DropdownMenuGroup>
-              </>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <SunIcon className="dark:hidden" />
@@ -126,11 +148,7 @@ export function UserMenu() {
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
-              <DropdownMenuItem
-                onSelect={() => {
-                  void sessionStore.signOut().then(() => router.replace("/login"));
-                }}
-              >
+              <DropdownMenuItem onSelect={() => void sessionStore.logout().then(() => router.replace("/login"))}>
                 <LogOutIcon />
                 {t("shell.logOut")}
               </DropdownMenuItem>

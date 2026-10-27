@@ -66,7 +66,7 @@ def main():
     launched = time.time()
     result = subprocess.run([str(java), "-Xmx1g", "-cp", classpath,
             "com.narudzbine.identity.AuthHttpIT$LocalDevelopment", "--" + args.mode],
-            cwd=str(backend), env=environment, timeout=900 if args.mode == "check" else 3720)
+            cwd=str(backend), env=environment, timeout=900 if args.mode == "check" else int(os.environ.get("LOCAL_SYNTHETIC_SERVE_SECONDS", "3600")) + 120)
     if result.returncode: stop("Synthetic development harness did not complete successfully.")
     evidence_path = backend / "target" / ("local-development-" + run_id + ".json")
     if not evidence_path.is_file() or evidence_path.stat().st_mtime < launched: stop("Fresh run-bound developer evidence missing.")

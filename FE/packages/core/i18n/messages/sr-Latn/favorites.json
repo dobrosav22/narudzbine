@@ -1,0 +1,13 @@
+{
+  "title": "Omiljeno",
+  "from": "Zajedničko za ceo tim · od {vendor}",
+  "shared": "Zajedničko za ceo tim",
+  "emptyTitle": "Još nema omiljenih proizvoda ovog dobavljača",
+  "emptyDescription": "Dodirnite srce na proizvodu da ga sačuvate ovde za brže naručivanje. Omiljeno je zajedničko za ceo tim.",
+  "browse": "Pregledaj katalog",
+  "unavailableTitle": "Više nije dostupno",
+  "unavailableDescription": "Ovi sačuvani proizvodi trenutno ne mogu da se naruče (nisu objavljeni ili dobavljač nije povezan). Možete ih ukloniti.",
+  "savedOn": "Sačuvano {date}",
+  "removeUnavailable": "Ukloni omiljeni proizvod sačuvan {date}",
+  "remove": "Ukloni"
+}

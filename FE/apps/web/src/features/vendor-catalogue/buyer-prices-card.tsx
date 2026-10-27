@@ -1,74 +1,34 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Trash2Icon } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { currencySymbol, formatMoney, formatPercent, parseDecimal, toDecimalInput, type Product } from "@repo/core";
+import { useTranslations } from "next-intl";
+import { currencySymbol, formatMoney, parsePriceInput, priceToInput, type AgreedPrice, type CatalogueBuyer, type Product } from "@repo/core";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { FieldError } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErrorState } from "@/components/query-states";
-import { useBuyerConnections, useBuyerOverrides, useDeleteBuyerOverride, useSetBuyerOverride } from "./queries";
-import { useTranslations } from "next-intl";
-import { useErrorText } from "@/lib/i18n";
+import { useBusiness } from "@/lib/session";
+import { useCatalogueErrorText } from "./parts";
+import { useAgreedPriceMutations, useAgreedPrices, useCatalogueBuyers } from "./queries";
 
 /**
- * 01 §3 per-buyer negotiated prices for one product. Saved immediately (each
- * row is its own record — not part of the product form's Save). Upsert: picking
- * a buyer who already has a price updates it.
+ * Agreed prices for this product across active buyer connections. Each row saves on its own
+ * (PUT with the current agreement revision, or null for a new one). The buyer's reconnection
+ * review/confirmation happens on the buyer side.
  */
-export function BuyerPricesCard({ vendorOrgId, product }: { vendorOrgId: string; product: Product }) {
+export function BuyerPricesCard({ product }: { product: Product }) {
   const t = useTranslations("buyerPrices");
-  const errorText = useErrorText();
-  const overrides = useBuyerOverrides(vendorOrgId, product.id);
-  const connections = useBuyerConnections(vendorOrgId);
-  const setOverride = useSetBuyerOverride(vendorOrgId, product.id);
-  const deleteOverride = useDeleteBuyerOverride(vendorOrgId, product.id);
-  const [buyerOrgId, setBuyerOrgId] = useState<string>();
-  const [price, setPrice] = useState("");
-  const [priceError, setPriceError] = useState<string>();
-
-  // Only active connections can be priced; names for existing rows come from all connections.
-  const buyerName = useMemo(
-    () => new Map(connections.data?.map((c) => [c.buyerOrg.id, c.buyerOrg.name])),
-    [connections.data],
-  );
-  const activeBuyers = connections.data?.filter((c) => c.relation.status === "active") ?? [];
-  const existing = overrides.data?.find((o) => o.buyerOrgId === buyerOrgId);
-
-  const submit = () => {
-    const value = parseDecimal(price);
-    if (!buyerOrgId) return;
-    if (value === undefined || value < 0) {
-      setPriceError(t("priceInvalid"));
-      return;
-    }
-    setOverride.mutate(
-      { buyerOrgId, price: value },
-      {
-        onSuccess: () => {
-          toast.success(t(existing ? "updated" : "set", { buyer: buyerName.get(buyerOrgId) ?? "", price: formatMoney(value) }));
-          setBuyerOrgId(undefined);
-          setPrice("");
-        },
-      },
-    );
-  };
-
-  const failed = overrides.isError ? overrides : connections.isError ? connections : undefined;
-  const rows = overrides.data ?? [];
+  const buyers = useCatalogueBuyers();
+  const relationshipIds = buyers.data?.map((b) => b.relationship.id) ?? [];
+  const agreed = useAgreedPrices(relationshipIds);
+  const failed = buyers.isError ? buyers : agreed.find((q) => q.isError);
+  const loading = buyers.isPending || agreed.some((q) => q.isPending);
 
   return (
     <Card>
@@ -76,12 +36,12 @@ export function BuyerPricesCard({ vendorOrgId, product }: { vendorOrgId: string;
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent>
         {failed ? (
           <ErrorState error={failed.error} onRetry={() => void failed.refetch()} />
-        ) : overrides.isPending || connections.isPending ? (
+        ) : loading ? (
           <Skeleton className="h-20 w-full" />
-        ) : rows.length === 0 ? (
+        ) : buyers.data!.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
           <div className="rounded-lg border">
@@ -89,113 +49,144 @@ export function BuyerPricesCard({ vendorOrgId, product }: { vendorOrgId: string;
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("buyer")}</TableHead>
-                  <TableHead className="text-right">{t("price")}</TableHead>
-                  <TableHead className="text-right">{t("vsBase")}</TableHead>
-                  <TableHead className="w-10">
-                    <span className="sr-only">{t("actions")}</span>
-                  </TableHead>
+                  <TableHead className="w-72 text-right">{t("price")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((o) => {
-                  const diff = product.basePrice > 0 ? ((o.price - product.basePrice) / product.basePrice) * 100 : 0;
-                  return (
-                    <TableRow key={o.id}>
-                      <TableCell>{buyerName.get(o.buyerOrgId) ?? t("formerBuyer")}</TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">{formatMoney(o.price)}</TableCell>
-                      <TableCell className="text-right font-mono text-muted-foreground tabular-nums">
-                        {diff > 0 ? "+" : ""}
-                        {formatPercent(Math.round(diff * 10) / 10)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          aria-label={t("removeAria", { buyer: buyerName.get(o.buyerOrgId) ?? t("buyerFallback") })}
-                          disabled={deleteOverride.isPending}
-                          onClick={() =>
-                            deleteOverride.mutate(o, {
-                              onSuccess: () => toast.success(t("removed", { buyer: buyerName.get(o.buyerOrgId) ?? t("buyer") })),
-                            })
-                          }
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {buyers.data!.map((buyer, i) => (
+                  <BuyerRow
+                    key={buyer.relationship.id}
+                    buyer={buyer}
+                    productId={product.id}
+                    agreement={agreed[i]?.data?.find((a) => a.productId === product.id)}
+                  />
+                ))}
               </TableBody>
             </Table>
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
 
-        {activeBuyers.length > 0 && (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            <Field className="sm:w-56">
-              <FieldLabel htmlFor="override-buyer" className="sr-only">
-                {t("buyer")}
-              </FieldLabel>
-              <Select
-                value={buyerOrgId ?? ""}
-                onValueChange={(v) => {
-                  setBuyerOrgId(v);
-                  const current = overrides.data?.find((o) => o.buyerOrgId === v);
-                  setPrice(current ? toDecimalInput(current.price) : "");
-                  setPriceError(undefined);
-                }}
-              >
-                <SelectTrigger id="override-buyer" className="w-full">
-                  <SelectValue placeholder={t("chooseBuyer")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {activeBuyers.map((c) => (
-                      <SelectItem key={c.buyerOrg.id} value={c.buyerOrg.id}>
-                        {c.buyerOrg.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field className="sm:w-40" data-invalid={!!priceError || undefined}>
-              <FieldLabel htmlFor="override-price" className="sr-only">
-                {t("negotiated")}
-              </FieldLabel>
-              <InputGroup>
+function BuyerRow({ buyer, productId, agreement }: { buyer: CatalogueBuyer; productId: string; agreement: AgreedPrice | undefined }) {
+  const t = useTranslations("buyerPrices");
+  const tc = useTranslations("common");
+  const errorText = useCatalogueErrorText();
+  const { organization } = useBusiness();
+  const m = useAgreedPriceMutations(productId);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [problem, setProblem] = useState<string>();
+  const name = buyer.partner?.displayName ?? t("unnamed");
+  const relationshipId = buyer.relationship.id;
+  const busy = m.set.isPending || m.remove.isPending;
+
+  const save = () => {
+    const price = parsePriceInput(value);
+    if (!price) return setProblem(t("priceInvalid"));
+    m.set.mutate(
+      { relationshipId, body: { unitPrice: price, expectedRevision: agreement?.revision ?? null } },
+      {
+        onSuccess: () => {
+          toast.success(t("saved", { buyer: name }));
+          setEditing(false);
+        },
+        onError: (e) => setProblem(errorText(e)),
+      },
+    );
+  };
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="flex flex-col gap-1">
+          <span>{name}</span>
+          {agreement?.confirmationRequired && (
+            <Badge variant="warning" title={t("awaitingHint")}>
+              {t("awaitingConfirmation")}
+            </Badge>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="text-right">
+        {editing ? (
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center justify-end gap-2">
+              <InputGroup className="w-36">
                 <InputGroupInput
-                  id="override-price"
                   inputMode="decimal"
                   className="font-mono"
-                  placeholder="0,00"
-                  value={price}
-                  aria-invalid={!!priceError || undefined}
+                  autoFocus
+                  aria-label={t("editAria", { buyer: name })}
+                  aria-invalid={!!problem || undefined}
+                  value={value}
                   onChange={(e) => {
-                    setPrice(e.target.value);
-                    setPriceError(undefined);
+                    setValue(e.target.value);
+                    setProblem(undefined);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault(); // this card sits inside the product form
-                      submit();
+                      save();
                     }
                   }}
                 />
                 <InputGroupAddon align="inline-end">
-                  <InputGroupText>{currencySymbol()}</InputGroupText>
+                  <InputGroupText>{currencySymbol(organization.currency)}</InputGroupText>
                 </InputGroupAddon>
               </InputGroup>
-              <FieldError>{priceError}</FieldError>
-            </Field>
-            <Button type="button" variant="outline" disabled={!buyerOrgId || !price || setOverride.isPending} onClick={submit}>
-              {setOverride.isPending && <Spinner data-icon="inline-start" />}
-              {existing ? t("update") : t("setPrice")}
+              <Button type="button" size="sm" disabled={busy} onClick={save}>
+                {m.set.isPending && <Spinner data-icon="inline-start" />}
+                {t("save")}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                {tc("cancel")}
+              </Button>
+            </div>
+            {problem && <FieldError>{problem}</FieldError>}
+          </div>
+        ) : (
+          <div className="flex items-center justify-end gap-2">
+            {agreement ? (
+              <span className="font-mono tabular-nums">{formatMoney(agreement.unitPrice, organization.currency)}</span>
+            ) : (
+              <span className="text-muted-foreground">{t("basePrice")}</span>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-label={t("editAria", { buyer: name })}
+              onClick={() => {
+                setValue(priceToInput(agreement?.unitPrice));
+                setProblem(undefined);
+                setEditing(true);
+              }}
+            >
+              {t("edit")}
             </Button>
+            {agreement && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                aria-label={t("removeAria", { buyer: name })}
+                disabled={busy}
+                onClick={() =>
+                  m.remove.mutate(
+                    { relationshipId, expectedRevision: agreement.revision },
+                    { onSuccess: () => toast.success(t("removed", { buyer: name })), onError: (e) => toast.error(errorText(e)) },
+                  )
+                }
+              >
+                {t("remove")}
+              </Button>
+            )}
           </div>
         )}
-        {!!setOverride.error && <p className="text-sm text-destructive">{errorText(setOverride.error)}</p>}
-      </CardContent>
-    </Card>
+      </TableCell>
+    </TableRow>
   );
 }

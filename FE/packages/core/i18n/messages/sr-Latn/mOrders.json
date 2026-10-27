@@ -1,0 +1,14 @@
+{
+  "loading": "Učitavanje narudžbina…",
+  "loadingOne": "Učitavanje narudžbine…",
+  "orderAria": "Narudžbina {number}",
+  "replacementFor": "Zamena za narudžbinu {number}",
+  "items": "{count, plural, one {{countText} stavka} few {{countText} stavke} other {{countText} stavki}}",
+  "filters": "Filteri",
+  "partner": "Partner",
+  "period": "Period",
+  "reasonPlaceholder": "Upišite razlog",
+  "confirm": "Potvrdi",
+  "back": "Nazad",
+  "messagePlaceholder": "Napišite poruku"
+}

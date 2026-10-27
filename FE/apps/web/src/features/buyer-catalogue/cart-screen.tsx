@@ -1,24 +1,23 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArchiveIcon, ShoppingCartIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { FileClockIcon, FilesIcon, LinkIcon, SaveIcon, ShoppingCartIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
-  checkoutProblems,
-  defaultLocationId,
-  defaultQuantity,
-  priceNote,
-  formatDateTime,
+  cartEstimate,
+  checkCartLine,
+  EMPTY_CART,
   formatMoney,
   formatNumber,
-  type DraftCart,
+  snapshotFromOffer,
+  type CartLineSnapshot,
+  type Currency,
 } from "@repo/core";
-import { ProductImage } from "@/components/product-image";
-import { EmptyState, ErrorState, RowsSkeleton } from "@/components/query-states";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { EmptyState, ErrorState } from "@/components/query-states";
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,83 +30,121 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCart } from "@/lib/cart";
-import { useErrorText, useMsg } from "@/lib/i18n";
-import { useSignedIn } from "@/lib/session";
-import { LocationSelect } from "@/features/orders/location-select";
-import {
-  useBuyerLocations,
-  useBuyerUsers,
-  useDiscardDraft,
-  useDraftCarts,
-  useParkCart,
-  useResumeDraft,
-} from "@/features/orders/queries";
-
-import { QuantityStepper } from "./quantity-stepper";
-import { useCartPricing } from "./queries";
+import { cartStore, useCart } from "@/lib/cart";
+import { useErrorText } from "@/lib/i18n";
+import { useBusiness } from "@/lib/session";
+import { isDraftConflict, useSaveCartAsDraft } from "./cart-actions";
+import { DraftConflictDialog } from "./draft-conflict";
+import { OfferImage, PriceBlock, QuantityStepper } from "./offer-parts";
+import { useCartLineOffers } from "./queries";
+import { useVendorContext } from "./vendor-context";
 
 /**
- * 03 → buyer "Cart" + "Draft carts": lines for the active vendor + a delivery
- * location, prices re-resolved at current quantities, save for later, and the
- * org's saved carts (the user's own first — 01 §6).
+ * The active vendor's local cart. Lines are re-priced from current offers at their quantities
+ * (an estimate, excl. VAT — the order review gives the exact receipt). The cart can be saved as
+ * shared saved work (a draft the whole team sees) and continues to update that draft while linked.
  */
 export function CartScreen() {
   const t = useTranslations("cart");
-  const tm = useMsg();
+  const ts = useTranslations("states");
   const errorText = useErrorText();
   const router = useRouter();
-  const { activeVendor, membership } = useSignedIn();
+  const { organization } = useBusiness();
+  const vendor = useVendorContext();
   const cart = useCart();
-  const pricing = useCartPricing(cart.scope, cart.lines);
-  const locations = useBuyerLocations(membership.org.id);
-  const park = useParkCart(cart.scope, membership.user.id);
-  const [pendingResume, setPendingResume] = useState<DraftCart>();
-  const resume = useResumeDraft(cart.scope);
+  const rows = useCartLineOffers(cart.scope?.vendorId, cart.lines);
+  const save = useSaveCartAsDraft(cart.scope);
+  const [conflict, setConflict] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const currency: Currency = rows.find((r) => r.offer)?.offer?.currency ?? organization.currency;
 
-  // The chosen location, else the user's home location (a default, not a restriction — 01 §1).
-  const locationId = cart.state.locationId ?? defaultLocationId(locations.data ?? [], membership.user.homeLocationId);
-  const problems = pricing.data && locations.data ? checkoutProblems({ rows: pricing.data.rows, locationId, locations: locations.data }) : [];
-  const unavailable = pricing.data?.rows.filter((r) => !r.product) ?? [];
+  // Keep line snapshots (names, rules, pictures) current with what the vendor publishes now.
+  const fresh = rows.flatMap((r) => (r.offer ? [[r.line.productId, snapshotFromOffer(r.offer)] as const] : []));
+  const freshKey = JSON.stringify(fresh);
+  useEffect(() => {
+    if (!cart.scope || fresh.length === 0) return;
+    cartStore.updateSnapshots(cart.scope, Object.fromEntries(fresh) as Record<string, CartLineSnapshot>);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- freshKey captures `fresh`
+  }, [cart.scope, freshKey]);
 
-  const doResume = (draft: DraftCart) => {
-    resume(draft);
-    toast.success(t("savedLoaded"));
-  };
+  if (vendor.isPending) return <Skeleton className="h-64 w-full" aria-busy="true" aria-label={ts("loading")} />;
+  if (vendor.error) return <ErrorState error={vendor.error} onRetry={() => void vendor.refetch()} />;
+
+  const checks = rows.map((r) => checkCartLine(r.line, r.offer, r.unavailable));
+  const estimate = cartEstimate(rows);
+  const blocking = checks.some((c) => c.unavailable || c.issue !== null) || rows.some((r) => r.isPending || !!r.error);
+  const unavailableCount = checks.filter((c) => c.unavailable).length;
+  const linked = cart.state.draft;
+
+  const doSave = (asNew: boolean) =>
+    save.mutate(
+      { asNew },
+      {
+        onSuccess: () => toast.success(linked && !asNew ? t("draftUpdated") : t("draftSaved")),
+        onError: (e) => (isDraftConflict(e) ? setConflict(true) : toast.error(errorText(e))),
+      },
+    );
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        {activeVendor && <p className="text-sm text-muted-foreground">{t("orderFrom", { vendor: activeVendor.name })}</p>}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          {vendor.active && <p className="text-sm text-muted-foreground">{t("orderFrom", { vendor: vendor.active.displayName })}</p>}
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/buyer/drafts">
+            <FilesIcon data-icon="inline-start" />
+            {t("savedDrafts")}
+          </Link>
+        </Button>
       </div>
 
-      {cart.lines.length === 0 ? (
+      {cart.state.pendingSubmission && (
+        <Alert>
+          <FileClockIcon />
+          <AlertTitle>{t("pendingTitle")}</AlertTitle>
+          <AlertDescription>{t("pendingDescription")}</AlertDescription>
+          <AlertAction>
+            <Button size="sm" asChild>
+              <Link href="/buyer/checkout">{t("pendingCheck")}</Link>
+            </Button>
+          </AlertAction>
+        </Alert>
+      )}
+
+      {linked && (
+        <Alert>
+          <LinkIcon />
+          <AlertTitle>{t("linkedTitle")}</AlertTitle>
+          <AlertDescription>{t("linkedDescription")}</AlertDescription>
+          <AlertAction>
+            <Button size="sm" variant="ghost" onClick={() => cart.linkDraft(null)}>
+              {t("unlink")}
+            </Button>
+          </AlertAction>
+        </Alert>
+      )}
+
+      {!vendor.active ? (
+        <EmptyState icon={ShoppingCartIcon} title={t("noVendorTitle")} description={t("noVendorDescription")} />
+      ) : cart.lines.length === 0 ? (
         <EmptyState icon={ShoppingCartIcon} title={t("emptyTitle")} description={t("emptyDescription")}>
           <Button asChild variant="outline">
             <Link href="/buyer">{t("browse")}</Link>
           </Button>
         </EmptyState>
-      ) : pricing.isError ? (
-        <ErrorState error={pricing.error} onRetry={() => void pricing.refetch()} />
-      ) : pricing.isPending ? (
-        <RowsSkeleton rows={Math.min(cart.lines.length + 1, 6)} />
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-3 lg:col-span-2">
-            {cart.state.draftCartId && (
-              <p className="text-sm text-muted-foreground">{t("editingSaved")}</p>
-            )}
-            {unavailable.length > 0 && (
+            {unavailableCount > 0 && (
               <Alert>
                 <TriangleAlertIcon />
-                <AlertDescription>
-                  {t("unavailable", { count: unavailable.length, countText: formatNumber(unavailable.length) })}
-                </AlertDescription>
+                <AlertDescription>{t("unavailable", { count: unavailableCount, countText: formatNumber(unavailableCount) })}</AlertDescription>
               </Alert>
             )}
             <div className="rounded-lg border">
@@ -116,7 +153,7 @@ export function CartScreen() {
                   <TableRow>
                     <TableHead>{t("product")}</TableHead>
                     <TableHead className="text-right">{t("price")}</TableHead>
-                    <TableHead className="w-36">{t("quantity")}</TableHead>
+                    <TableHead className="w-40">{t("quantity")}</TableHead>
                     <TableHead className="text-right">{t("total")}</TableHead>
                     <TableHead className="w-10">
                       <span className="sr-only">{t("remove")}</span>
@@ -124,52 +161,73 @@ export function CartScreen() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pricing.data.rows.map(({ line, product, price, belowMinimum }) => {
-                    const note = price && priceNote(price);
+                  {rows.map(({ line, offer, error }, i) => {
+                    const check = checks[i]!;
+                    const snap = line.snapshot;
+                    const name = offer?.product.name ?? snap?.name ?? t("unknownProduct");
+                    const pricedHere = offer && offer.pricedQuantity === line.quantity;
                     return (
-                      <TableRow key={line.productId} className={product ? undefined : "text-muted-foreground"}>
+                      <TableRow key={line.productId} className={check.unavailable ? "text-muted-foreground" : undefined}>
                         <TableCell>
-                          {product ? (
-                            <div className="flex items-center gap-3">
-                              <ProductImage src={product.imageUrl} className="size-12" />
-                              <div className="flex flex-col gap-1">
-                                <Link href={`/buyer/products/${product.id}`} className="font-medium hover:underline">
-                                  {product.name}
+                          <div className="flex items-center gap-3">
+                            <OfferImage assetId={offer?.product.galleryAssetIds[0] ?? snap?.imageAssetId} className="size-12" />
+                            <div className="flex min-w-0 flex-col gap-1">
+                              {check.unavailable ? (
+                                <span className="font-medium">{name}</span>
+                              ) : (
+                                <Link href={`/buyer/products/${line.productId}`} className="font-medium hover:underline">
+                                  {name}
                                 </Link>
-                                <span className="font-mono text-xs text-muted-foreground">{product.sku}</span>
-                                {belowMinimum && <Badge variant="warning">{t("minimumOrder", { qty: formatNumber(defaultQuantity(product)) })}</Badge>}
+                              )}
+                              <span className="text-xs text-muted-foreground">
+                                {snap && <span className="font-mono">{offer?.product.sku ?? snap.sku}</span>}
+                                {(offer?.product.packDescription ?? snap?.packDescription) && ` · ${offer?.product.packDescription ?? snap?.packDescription}`}
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {check.unavailable && <Badge variant="destructive">{t("noLongerAvailable")}</Badge>}
+                                {check.issue && check.rule && (
+                                  <Badge variant="warning">
+                                    {t("quantityInvalid", { min: formatNumber(check.rule.minimumQuantity), step: formatNumber(check.rule.quantityStep) })}
+                                  </Badge>
+                                )}
+                                {check.stockShort && offer?.availableQuantity !== null && offer && (
+                                  <Badge variant="warning">{t("stockShort", { qty: formatNumber(offer.availableQuantity ?? 0) })}</Badge>
+                                )}
+                                {!!error && <Badge variant="outline">{t("priceUnavailable")}</Badge>}
                               </div>
+                              {check.suggested !== null && (
+                                <Button size="xs" variant="outline" className="w-fit" onClick={() => cart.setQuantity(line.productId, check.suggested!)}>
+                                  {t("useQuantity", { qty: formatNumber(check.suggested) })}
+                                </Button>
+                              )}
                             </div>
-                          ) : (
-                            <span>{t("noLongerAvailable")}</span>
-                          )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          {price && (
-                            <div className="flex flex-col items-end gap-1">
-                              <span className="font-mono tabular-nums">{formatMoney(price.unitPrice)}</span>
-                              {note && <Badge variant={note.variant}>{tm(note.msg)}</Badge>}
+                          {offer && pricedHere ? (
+                            <div className="flex justify-end">
+                              <PriceBlock price={offer.effectivePrice} currency={offer.currency} unit={offer.unitName} />
                             </div>
+                          ) : (
+                            !check.unavailable && <Skeleton className="ml-auto h-5 w-16" />
                           )}
                         </TableCell>
                         <TableCell>
-                          {product && (
+                          {!check.unavailable && check.rule && (
                             <QuantityStepper
                               value={line.quantity}
-                              min={defaultQuantity(product)}
-                              onChange={(q) => cart.setQuantity(product.id, q)}
-                              label={t("quantityOf", { product: product.name })}
+                              rule={check.rule}
+                              onChange={(q) => cart.setQuantity(line.productId, q)}
+                              label={t("quantityOf", { product: name })}
                             />
                           )}
+                          {check.unavailable && <span className="font-mono tabular-nums">{formatNumber(line.quantity)}</span>}
                         </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">{price ? formatMoney(price.lineTotal) : "—"}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">
+                          {offer && pricedHere ? formatMoney(offer.effectivePrice.lineTotal, offer.currency) : "—"}
+                        </TableCell>
                         <TableCell>
-                          <Button
-                            size="icon-sm"
-                            variant="ghost"
-                            aria-label={t("removeAria", { product: product?.name ?? t("unavailableProduct") })}
-                            onClick={() => cart.remove(line.productId)}
-                          >
+                          <Button size="icon-sm" variant="ghost" aria-label={t("removeAria", { product: name })} onClick={() => cart.remove(line.productId)}>
                             <Trash2Icon />
                           </Button>
                         </TableCell>
@@ -180,20 +238,16 @@ export function CartScreen() {
               </Table>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                disabled={park.isPending}
-                onClick={() =>
-                  park.mutate(undefined, {
-                    onSuccess: () => toast.success(t("saved")),
-                    onError: (e) => toast.error(errorText(e)),
-                  })
-                }
-              >
-                {park.isPending ? <Spinner data-icon="inline-start" /> : <ArchiveIcon data-icon="inline-start" />}
-                {t("saveForLater")}
+              <Button variant="outline" disabled={save.isPending} onClick={() => doSave(false)}>
+                {save.isPending ? <Spinner data-icon="inline-start" /> : <SaveIcon data-icon="inline-start" />}
+                {linked ? t("updateDraft") : t("saveAsDraft")}
               </Button>
-              <Button variant="ghost" onClick={() => cart.clear()}>
+              {linked && (
+                <Button variant="ghost" disabled={save.isPending} onClick={() => doSave(true)}>
+                  {t("saveAsNewDraft")}
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => setConfirmClear(true)}>
                 {t("clear")}
               </Button>
             </div>
@@ -203,122 +257,46 @@ export function CartScreen() {
             <CardHeader>
               <CardTitle>{t("summary")}</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-4 text-sm">
-              <Field>
-                <FieldLabel htmlFor="cart-location">{t("deliverTo")}</FieldLabel>
-                {locations.isError ? (
-                  <ErrorState error={locations.error} onRetry={() => void locations.refetch()} />
-                ) : (
-                  <LocationSelect id="cart-location" locations={locations.data ?? []} value={locationId} onChange={cart.setLocation} />
-                )}
-                {locationId && locations.data && (
-                  <FieldDescription>{locations.data.find((l) => l.id === locationId)?.address}</FieldDescription>
-                )}
-              </Field>
+            <CardContent className="flex flex-col gap-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("items")}</span>
-                <span className="font-mono tabular-nums">{formatNumber(pricing.data.itemCount)}</span>
+                <span className="text-muted-foreground">{t("products")}</span>
+                <span className="font-mono tabular-nums">{formatNumber(cart.lines.length)}</span>
               </div>
               <div className="flex justify-between text-base font-semibold">
-                <span>{t("total")}</span>
-                <span className="font-mono tabular-nums">{formatMoney(pricing.data.total)}</span>
+                <span>{estimate.complete ? t("estimatedTotal") : t("partialTotal")}</span>
+                <span className="font-mono tabular-nums">{formatMoney(estimate.total, currency)}</span>
               </div>
               <p className="text-xs text-muted-foreground">{t("pricingNote")}</p>
             </CardContent>
             <CardFooter className="flex-col items-stretch gap-2">
-              <Button
-                disabled={problems.length > 0}
-                onClick={() => {
-                  // Persist the default so checkout shows the same location.
-                  if (locationId && !cart.state.locationId) cart.setLocation(locationId);
-                  router.push("/buyer/checkout");
-                }}
-              >
+              <Button disabled={blocking} onClick={() => router.push("/buyer/checkout")}>
                 {t("checkout")}
               </Button>
-              {problems.length > 0 && (
-                <ul className="flex list-disc flex-col gap-1 pl-4 text-xs text-muted-foreground">
-                  {problems.map((p) => (
-                    <li key={p.key}>{tm(p)}</li>
-                  ))}
-                </ul>
-              )}
+              {blocking && <p className="text-xs text-muted-foreground">{t("fixBeforeCheckout")}</p>}
             </CardFooter>
           </Card>
         </div>
       )}
 
-      <SavedCarts
-        onResume={(draft) => (cart.lines.length > 0 ? setPendingResume(draft) : doResume(draft))}
-        currentDraftId={cart.state.draftCartId}
-      />
+      <DraftConflictDialog scope={cart.scope} open={conflict} onOpenChange={setConflict} />
 
-      <AlertDialog open={!!pendingResume} onOpenChange={(o) => !o && setPendingResume(undefined)}>
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("replaceTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("replaceDescription")}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("clearTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{linked ? t("clearLinkedDescription") : t("clearDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => pendingResume && doResume(pendingResume)}>{t("replace")}</AlertDialogAction>
+            <AlertDialogAction
+              onClick={() =>
+                // Never drop an unconfirmed submission: it is needed to reconcile a lost response.
+                cart.replace({ ...EMPTY_CART, deliveryLocationId: cart.state.deliveryLocationId, pendingSubmission: cart.state.pendingSubmission })
+              }
+            >{t("clear")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-/** Draft carts for this buyer org + vendor — visible to the whole team, mine first (01 §6). */
-function SavedCarts({ onResume, currentDraftId }: { onResume: (d: DraftCart) => void; currentDraftId?: string }) {
-  const t = useTranslations("cart");
-  const { membership } = useSignedIn();
-  const cart = useCart();
-  const drafts = useDraftCarts(cart.scope, membership.user.id);
-  const users = useBuyerUsers(membership.org.id);
-  const locations = useBuyerLocations(membership.org.id);
-  const discard = useDiscardDraft(cart.scope);
-  const name = (id: string) => (id === membership.user.id ? t("you") : users.data?.find((u) => u.id === id)?.name ?? t("teammate"));
-
-  if (drafts.isError) return <ErrorState error={drafts.error} onRetry={() => void drafts.refetch()} />;
-  const list = (drafts.data ?? []).filter((d) => d.id !== currentDraftId);
-  if (drafts.isPending || list.length === 0) return null;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("savedTitle")}</CardTitle>
-        <CardDescription>{t("savedDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ul className="flex flex-col divide-y" aria-label={t("savedTitle")}>
-          {list.map((d) => (
-            <li key={d.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-sm font-medium">
-                  {t("savedLine", { who: name(d.createdByUserId), count: d.items.reduce((n, i) => n + i.quantity, 0), countText: formatNumber(d.items.reduce((n, i) => n + i.quantity, 0)) })}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {t("savedMeta", { location: locations.data?.find((l) => l.id === d.locationId)?.name ?? t("noLocation"), when: formatDateTime(d.updatedAt) })}
-                </span>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => onResume(d)}>
-                {t("resume")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-label={t("discardAria", { who: name(d.createdByUserId) })}
-                onClick={() => discard.mutate(d, { onSuccess: () => toast.success(t("discarded")) })}
-              >
-                <Trash2Icon />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
   );
 }

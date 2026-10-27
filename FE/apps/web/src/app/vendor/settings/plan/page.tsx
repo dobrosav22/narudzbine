@@ -1,7 +1,8 @@
 "use client";
 
-import { PlanSettingsPage } from "@/features/org-admin/pages";
+import { PlanScreen } from "@/features/subscription/plan-screen";
 
-export default function Page() {
-  return <PlanSettingsPage />;
+/** The settings layout supplies the page header; the plan screen renders its own cards. */
+export default function VendorPlanPage() {
+  return <PlanScreen />;
 }

@@ -10,9 +10,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_USE_MOCKS": "true",
-        "EXPO_PUBLIC_CURRENCY": "BAM",
-        "EXPO_PUBLIC_LOCALE": "bs-BA"
+        "EXPO_PUBLIC_API_BASE_URL": "https://staging-api.example.invalid/api/v1"
       }
     },
     "production": {
@@ -21,9 +19,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_USE_MOCKS": "false",
-        "EXPO_PUBLIC_CURRENCY": "BAM",
-        "EXPO_PUBLIC_LOCALE": "bs-BA"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.example.invalid/api/v1"
       }
     }
   }

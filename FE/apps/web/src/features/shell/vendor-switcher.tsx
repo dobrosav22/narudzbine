@@ -13,16 +13,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { sessionStore, useSignedIn } from "@/lib/session";
+import { Skeleton } from "@/components/ui/skeleton";
+import { sessionStore } from "@/lib/session";
+import { useVendorContext } from "@/features/buyer-catalogue/vendor-context";
 
 /**
- * 03: buyers switch "vendor context" here — the one place it changes. Catalogue,
- * cart and orders all read `activeVendor` from the session. With a single
- * vendor it's a static label (no picker to pick from).
+ * The buyer's vendor context switcher in the buyer shell — the one place it changes. Catalogue,
+ * cart, favorites and checkout follow the active vendor; each vendor keeps its own cart. With a
+ * single vendor it is a static label. Rendering it also keeps the remembered vendor valid
+ * (auto-selects the first connected vendor when none or a disconnected one is remembered).
  */
 export function VendorSwitcher() {
-  const t = useTranslations("shell");
-  const { connectedVendors, activeVendor } = useSignedIn();
+  const t = useTranslations("browse");
+  const { vendors, active, isPending } = useVendorContext();
+
+  if (isPending) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <div className="flex items-center gap-2 p-2" aria-busy="true" aria-label={t("loadingVendors")}>
+            <Skeleton className="size-8 rounded-md" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
+
   const label = (
     <>
       <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-primary-subtle-foreground">
@@ -30,12 +47,12 @@ export function VendorSwitcher() {
       </span>
       <span className="flex min-w-0 flex-col gap-0.5 leading-none">
         <span className="text-xs text-muted-foreground">{t("orderingFrom")}</span>
-        <span className="truncate font-medium">{activeVendor?.name ?? t("noVendorsYet")}</span>
+        <span className="truncate font-medium">{active?.displayName ?? t("noVendorsYet")}</span>
       </span>
     </>
   );
 
-  if (connectedVendors.length < 2) {
+  if (vendors.length < 2) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -59,17 +76,18 @@ export function VendorSwitcher() {
             <DropdownMenuGroup>
               <DropdownMenuLabel>{t("vendors")}</DropdownMenuLabel>
               <DropdownMenuRadioGroup
-                value={activeVendor?.id}
+                value={active?.vendorId}
                 onValueChange={(id) => {
+                  if (id === active?.vendorId) return;
                   void sessionStore.selectVendor(id).then(() => {
-                    const name = connectedVendors.find((v) => v.id === id)?.name;
-                    toast.success(t("nowOrderingFrom", { name: name ?? "" }));
+                    const name = vendors.find((v) => v.vendorId === id)?.displayName ?? "";
+                    toast.success(t("nowOrderingFrom", { name }));
                   });
                 }}
               >
-                {connectedVendors.map((v) => (
-                  <DropdownMenuRadioItem key={v.id} value={v.id}>
-                    {v.name}
+                {vendors.map((v) => (
+                  <DropdownMenuRadioItem key={v.vendorId} value={v.vendorId}>
+                    {v.displayName}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>

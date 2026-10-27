@@ -5,7 +5,7 @@
  * Never redeclare a color in an app — change it here.
  *
  * Values: shadcn init preset b5vnpT7GS (zinc + violet) with the 05 §1
- * corrections from BUILD_LOG 2026-09-27 "Web theme". All Tailwind v4 palette
+ * corrections from docs/frontend/build-log.md 2026-09-27 "Web theme". All Tailwind v4 palette
  * OKLCH. Names follow shadcn's variable names so shadcn components work
  * unchanged on web.
  */

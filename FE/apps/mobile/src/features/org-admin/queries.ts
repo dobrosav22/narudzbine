@@ -1,184 +1,233 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  loadTeam,
-  removeTeamMember,
-  services,
+  acceptOwnershipTransfer,
+  allActiveLocations,
+  archiveContact,
+  archiveLocation,
+  changeMemberRole,
+  closeOrganization,
+  createContact,
+  createLocation,
+  deactivateMember,
+  inviteMember,
+  organizationKeys,
+  organizationQueries,
+  reactivateMember,
+  requestOwnershipTransfer,
+  requestPrivacyCase,
+  resendInvitation,
+  restoreContact,
+  restoreLocation,
+  revokeInvitation,
+  revokeOwnershipTransfer,
+  updateContact,
+  updateLocation,
+  updateOrganization,
+  type BusinessContact,
+  type Contact,
+  type ContactQuery,
+  type InvitationQuery,
   type Location,
-  type LocationInput,
-  type Membership,
-  type NotificationChannel,
-  type NotificationPreference,
-  type NotificationType,
-  type OrgType,
-  type VendorLocation,
+  type LocationFields,
+  type LocationQuery,
+  type MemberQuery,
+  type OrganizationUpdate,
 } from '@repo/core';
 import { sessionStore } from '@/lib/session';
 
-/**
- * Buyer locations reuse the key the cart/checkout/orders screens already read
- * (['buyerLocations', id]), so an edit here shows up there without extra wiring.
- */
-export const adminKeys = {
-  locations: (orgType: OrgType, orgId: string) => [orgType === 'vendor' ? 'vendorLocations' : 'buyerLocations', orgId] as const,
-  team: (orgId: string) => ['team', orgId] as const,
-  buyerOrg: (orgId: string) => ['buyerOrg', orgId] as const,
-  vendorOrg: (orgId: string) => ['vendorOrg', orgId] as const,
-  prefs: (userId: string) => ['notificationPrefs', userId] as const,
-};
+/** React Query wrappers for the own-organization factories in @repo/core. */
 
-type Org = Pick<Membership, 'orgType'> & { orgId: string };
-
-/** Vendor order screens label warehouses and buyer locations from this context. */
-const invalidateOrderContext = (qc: ReturnType<typeof useQueryClient>, orgType: OrgType, orgId: string) =>
-  orgType === 'vendor' ? qc.invalidateQueries({ queryKey: ['vendorOrderContext', orgId] }) : qc.invalidateQueries({ queryKey: ['vendorOrderContext'] });
-
-// ── Locations ────────────────────────────────────────────────────────────
-
-export function useLocations({ orgType, orgId }: Org) {
-  return useQuery({
-    queryKey: adminKeys.locations(orgType, orgId),
-    queryFn: (): Promise<(Location | VendorLocation)[]> =>
-      orgType === 'vendor' ? services.locations.listVendorLocations(orgId) : services.locations.listBuyerLocations(orgId),
-  });
+export function useOrganization() {
+  return useQuery(organizationQueries.current());
 }
 
-export function useSaveLocation({ orgType, orgId }: Org) {
+export function useUpdateOrganization() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ locationId, input }: { locationId?: string; input: LocationInput }): Promise<Location | VendorLocation> => {
-      if (orgType === 'vendor')
-        return locationId ? services.locations.updateVendorLocation(locationId, input) : services.locations.createVendorLocation(orgId, input);
-      return locationId ? services.locations.updateBuyerLocation(locationId, input) : services.locations.createBuyerLocation(orgId, input);
+    mutationFn: (body: OrganizationUpdate) => updateOrganization(body),
+    onSuccess: (organization) => {
+      qc.setQueryData(organizationKeys.current(), organization);
+      // The shell shows the name and the UI language may follow the default.
+      sessionStore.update({ organization });
     },
-    onSuccess: () =>
-      Promise.all([qc.invalidateQueries({ queryKey: adminKeys.locations(orgType, orgId) }), invalidateOrderContext(qc, orgType, orgId)]),
   });
 }
 
-export function useDeleteLocation({ orgType, orgId }: Org) {
-  const qc = useQueryClient();
+/** Guarded, owner only. Success signs this session out. */
+export function useCloseOrganization() {
   return useMutation({
-    mutationFn: (locationId: string) =>
-      orgType === 'vendor' ? services.locations.deleteVendorLocation(locationId) : services.locations.deleteBuyerLocation(locationId),
-    onSuccess: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: adminKeys.locations(orgType, orgId) }),
-        // A deleted home location is cleared on the users that had it.
-        qc.invalidateQueries({ queryKey: adminKeys.team(orgId) }),
-        invalidateOrderContext(qc, orgType, orgId),
-        sessionStore.refresh(),
-      ]),
+    mutationFn: ({ expectedRevision, reason }: { expectedRevision: string; reason: string }) => closeOrganization(expectedRevision, reason),
+    onSuccess: () => sessionStore.expire(),
   });
 }
 
-// ── Team ─────────────────────────────────────────────────────────────────
+// ── Members ──────────────────────────────────────────────────────────────
 
-export function useTeam(membership: Membership) {
-  return useQuery({ queryKey: adminKeys.team(membership.org.id), queryFn: () => loadTeam(services, membership) });
+export function useMembers(q: MemberQuery) {
+  return useQuery(organizationQueries.members(q));
 }
 
-function useInvalidateTeam(membership: Membership) {
+function useInvalidateMembers() {
   const qc = useQueryClient();
   return () =>
     Promise.all([
-      qc.invalidateQueries({ queryKey: adminKeys.team(membership.org.id) }),
-      qc.invalidateQueries({ queryKey: ['buyerUsers', membership.org.id] }),
-      invalidateOrderContext(qc, membership.orgType, membership.org.id),
+      qc.invalidateQueries({ queryKey: ['organization', 'members'] }),
+      qc.invalidateQueries({ queryKey: organizationKeys.latestTransfer() }),
     ]);
 }
 
-export function useInviteTeammate(membership: Membership) {
-  const invalidate = useInvalidateTeam(membership);
+export function useChangeMemberRole() {
+  const invalidate = useInvalidateMembers();
   return useMutation({
-    mutationFn: (email: string) =>
-      services.invites.createTeamInvite({ targetOrgId: membership.org.id, targetOrgType: membership.orgType, email }),
+    mutationFn: ({ id, revision, role }: { id: string; revision: string; role: 'ADMIN' | 'STAFF' }) => changeMemberRole(id, revision, role),
     onSuccess: () => invalidate(),
   });
 }
 
-export function useRevokeInvite(membership: Membership) {
-  const invalidate = useInvalidateTeam(membership);
-  return useMutation({ mutationFn: (inviteId: string) => services.invites.revoke(inviteId), onSuccess: () => invalidate() });
+export function useDeactivateMember() {
+  const invalidate = useInvalidateMembers();
+  return useMutation({ mutationFn: ({ id, revision }: { id: string; revision: string }) => deactivateMember(id, revision), onSuccess: () => invalidate() });
 }
 
-export function useRemoveMember(membership: Membership) {
-  const invalidate = useInvalidateTeam(membership);
-  return useMutation({ mutationFn: (userId: string) => removeTeamMember(services, membership, userId), onSuccess: () => invalidate() });
+export function useReactivateMember() {
+  const invalidate = useInvalidateMembers();
+  return useMutation({ mutationFn: ({ id, revision }: { id: string; revision: string }) => reactivateMember(id, revision), onSuccess: () => invalidate() });
 }
 
-// ── Company ──────────────────────────────────────────────────────────────
+// ── Invitations ──────────────────────────────────────────────────────────
 
-export function useBuyerOrg(orgId: string) {
-  return useQuery({ queryKey: adminKeys.buyerOrg(orgId), queryFn: () => services.buyerOrgs.getBuyerOrg(orgId) });
+export function useInvitations(q: InvitationQuery, enabled: boolean) {
+  return useQuery({ ...organizationQueries.invitations(q), enabled });
 }
 
-/** Name (both sides) and inventory tracking (vendors). The session holds the org name the shell shows, so it refreshes too. */
-export function useUpdateCompany({ orgType, orgId }: Org) {
+export function useInviteMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (patch: { name?: string; tracksInventory?: boolean }) =>
-      orgType === 'vendor' ? services.vendorOrgs.updateVendorOrg(orgId, patch) : services.buyerOrgs.updateBuyerOrg(orgId, { name: patch.name }),
-    onSuccess: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: orgType === 'vendor' ? adminKeys.vendorOrg(orgId) : adminKeys.buyerOrg(orgId) }),
-        // Tracking on/off adds or removes stock on every product and the dashboard's low-stock card.
-        orgType === 'vendor' ? qc.invalidateQueries({ queryKey: ['products', orgId] }) : undefined,
-        orgType === 'vendor' ? qc.invalidateQueries({ queryKey: ['orders', orgId] }) : undefined,
-        orgType === 'vendor' ? qc.invalidateQueries({ queryKey: ['buyerCatalogue', orgId] }) : undefined,
-        sessionStore.refresh(),
-      ]),
+    mutationFn: ({ email, role }: { email: string; role: 'ADMIN' | 'STAFF' }) => inviteMember(email, role),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['organization', 'invitations'] }),
   });
 }
 
-// ── Account ──────────────────────────────────────────────────────────────
+export function useRevokeInvitation() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: revokeInvitation, onSuccess: () => qc.invalidateQueries({ queryKey: ['organization', 'invitations'] }) });
+}
 
-export function useUpdateProfile(email: string) {
+export function useResendInvitation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => services.auth.updateProfile({ email, name }),
-    // The name shows in the shell, on teams and on order threads.
-    onSuccess: () => Promise.all([sessionStore.refresh(), qc.invalidateQueries({ queryKey: ['team'] }), qc.invalidateQueries({ queryKey: ['vendorOrderContext'] })]),
+    mutationFn: ({ id, revision, key }: { id: string; revision: string; key: string }) => resendInvitation(id, revision, key),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['organization', 'invitations'] }),
   });
 }
 
-export function useChangePassword(email: string) {
-  return useMutation({
-    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
-      services.auth.changePassword({ email, currentPassword, newPassword }),
-  });
+// ── Ownership transfer ───────────────────────────────────────────────────
+
+export function useLatestTransfer(enabled: boolean) {
+  return useQuery({ ...organizationQueries.latestTransfer(), enabled });
 }
 
-export function useSetHomeLocation(membership: Membership) {
+export function useRequestTransfer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (locationId: string | null) => services.team.setHomeLocation(membership.user.id, locationId),
-    onSuccess: () => Promise.all([sessionStore.refresh(), qc.invalidateQueries({ queryKey: adminKeys.team(membership.org.id) })]),
+    mutationFn: ({ recipientId, orgRevision }: { recipientId: string; orgRevision: string }) => requestOwnershipTransfer(recipientId, orgRevision),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: organizationKeys.latestTransfer() }), sessionStore.refresh()]),
   });
 }
 
-export function useNotificationPrefs(membership: Membership) {
-  return useQuery({
-    queryKey: adminKeys.prefs(membership.user.id),
-    queryFn: () => services.notifications.getPreferences(membership.user.id, membership.orgType),
-  });
-}
-
-/** Optimistic: the switch flips at once and rolls back if the save fails. */
-export function useTogglePreference(membership: Membership) {
+export function useRevokeTransfer() {
   const qc = useQueryClient();
-  const key = adminKeys.prefs(membership.user.id);
   return useMutation({
-    mutationFn: (p: { notificationType: NotificationType; channel: NotificationChannel; enabled: boolean }) =>
-      services.notifications.updatePreference({ userId: membership.user.id, userType: membership.orgType, ...p }),
-    onMutate: async (p) => {
-      await qc.cancelQueries({ queryKey: key });
-      const previous = qc.getQueryData<NotificationPreference[]>(key);
-      qc.setQueryData<NotificationPreference[]>(key, (prefs) =>
-        prefs?.map((x) => (x.notificationType === p.notificationType && x.channel === p.channel ? { ...x, enabled: p.enabled } : x)),
-      );
-      return { previous };
-    },
-    onError: (_e, _p, ctx) => qc.setQueryData(key, ctx?.previous),
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    mutationFn: ({ id, revision }: { id: string; revision: string }) => revokeOwnershipTransfer(id, revision),
+    onSuccess: () => qc.invalidateQueries({ queryKey: organizationKeys.latestTransfer() }),
+  });
+}
+
+/** Both participants are signed out on success. */
+export function useAcceptTransfer() {
+  return useMutation({ mutationFn: ({ id, revision }: { id: string; revision: string }) => acceptOwnershipTransfer(id, revision) });
+}
+
+// ── Locations ────────────────────────────────────────────────────────────
+
+export function useLocations(q: LocationQuery) {
+  return useQuery(organizationQueries.locations(q));
+}
+
+export function useActiveLocations(enabled = true) {
+  return useQuery({ ...allActiveLocations(), enabled });
+}
+
+function useInvalidateLocations() {
+  const qc = useQueryClient();
+  // Archiving clears home locations, so the own account may change too.
+  return () => Promise.all([qc.invalidateQueries({ queryKey: ['organization', 'locations'] }), sessionStore.refresh()]);
+}
+
+export function useSaveLocation() {
+  const invalidate = useInvalidateLocations();
+  return useMutation({
+    mutationFn: ({ id, existing, fields }: { id: string; existing?: Location; fields: LocationFields }) =>
+      existing ? updateLocation(existing, fields) : createLocation(id, fields),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useArchiveLocation() {
+  const invalidate = useInvalidateLocations();
+  return useMutation({
+    mutationFn: ({ location, archive }: { location: Location; archive: boolean }) => (archive ? archiveLocation(location) : restoreLocation(location)),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// ── Contacts ─────────────────────────────────────────────────────────────
+
+export function useContacts(q: ContactQuery) {
+  return useQuery(organizationQueries.contacts(q));
+}
+
+function useInvalidateContacts() {
+  const qc = useQueryClient();
+  // Archiving the shared contact clears it on the organization (and advances its revision).
+  return () => Promise.all([qc.invalidateQueries({ queryKey: ['organization', 'contacts'] }), qc.invalidateQueries({ queryKey: organizationKeys.current() })]);
+}
+
+export function useSaveContact() {
+  const invalidate = useInvalidateContacts();
+  return useMutation({
+    mutationFn: ({ id, existing, label, contact }: { id: string; existing?: BusinessContact; label: string; contact: Contact }) =>
+      existing ? updateContact(existing, label, contact) : createContact(id, label, contact),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useArchiveContact() {
+  const invalidate = useInvalidateContacts();
+  return useMutation({
+    mutationFn: ({ contact, archive }: { contact: BusinessContact; archive: boolean }) => (archive ? archiveContact(contact) : restoreContact(contact)),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// ── Audit and privacy ────────────────────────────────────────────────────
+
+export function useAudit(action: string | null, enabled: boolean) {
+  return useInfiniteQuery({ ...organizationQueries.audit(action), enabled });
+}
+
+export function usePrivacyCases(enabled: boolean) {
+  return useQuery({ ...organizationQueries.privacyCases(), enabled });
+}
+
+export function usePrivacyExport(caseId: string, enabled: boolean) {
+  return useQuery({ ...organizationQueries.privacyExport(caseId), enabled, retry: false });
+}
+
+export function useRequestPrivacyCase() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, kind, reason }: { id: string; kind: 'EXPORT' | 'REDACTION'; reason: string }) => requestPrivacyCase(id, kind, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: organizationKeys.privacyCases() }),
   });
 }

@@ -1,0 +1,19 @@
+# Narrow read-activity authority guards — selected prototype
+
+One record per backend feature: Implementation. Domain index: [backend](../README.md).
+
+## Implementation
+
+_Originally `BE/READ_ACTIVITY_GUARDS_IMPLEMENTATION.md`: Narrow read-activity authority guards — selected prototype._
+
+**Not promoted.** Reduced candidates did not meet all targets. Retain their source/result evidence, but do not implement these production changes as remaining features. The unchanged verified application passed the reduced [Linux private-network comparison](linux-local-load.md#implementation); continue infrastructure verification there.
+
+2026-10-23, delegated D-GOV-005 refinement before dependent prototype code. Corrected lifecycle prototypec545c99f completed with no HTTP failures but burst98.3598rps/100 drops/read816.764ms; it is not accepted. No production prototype, group delay or64 pool has been promoted. Current shipping evidence remains1,591 tests.
+
+Ordinary read handlers currently retain exclusive account and session row guards during data assembly, and repeat full validation before activity. Prototype only catalogue GETs, buyer offer GETs, order listing and inbox/preferences GETs with a distinct read-activity guard: preserve sorted organization SHARE and membership SHARE, acquire account SHARE, read current session without a session row lock, then repeat current validation and atomically update last activity with GREATEST before committing. Every fresh account/session/transport/epoch/generation/method/pending/verified/active/strict expiry check remains. No authorization cache or timestamp batching; success still requires the durable activity commit.
+
+The account SHARE guard must exclude every account/credential/session revoker or rotator, which keeps its existing account UPDATE protocol. Organization/membership guards continue to exclude organization state/role/connection changes. Existing public authenticate, issue, logout/revoke, reauthentication, profile/member/ownership/administrative and other mutation paths remain exclusive; do not globally change them or introduce a SHARE-to-UPDATE upgrade. Only the listed GET handlers use the new guard and matching read-activity method. Browser mutations/CSRF helpers remain unchanged. Session retention selects only payload expired for30 days; no valid session qualifies. Recheck before final activity, and fail closed if the source disappeared or expired. Concurrent read activity uses the existing monotonic atomic session UPDATE and takes that row lock only for the final write/commit.
+
+This changes lock compatibility, not permission or expiry policy. Audit all session invalidation/rotation writers and prove exclusion with real database races, current role/state/token checks, exact boundaries, failed-action/no-activity rollback and concurrent monotonic activity. Scope narrow GET adapters explicitly so identity mutations cannot upgrade an account SHARE guard. Preserve normal deadlock/serialization policy and no uncertain-commit retries. No target/deadline/durability/workload/API/schema/dependency change.
+
+First run a source-manifest-bound reduced90-second candidate containing the already-unpromoted ordered-session and narrow-lifecycle prototypes at runtime32/v1 local database profile, without group delay. A passing reduced candidate must still undergo maintained-source promotion, meaningful RS/BA HTTP/database races, separate review, full frozen wrapper/fresh shipping artifacts and the unchanged complete full workload. No full-capacity/hosted/provider/production claim from the prototype.

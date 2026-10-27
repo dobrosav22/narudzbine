@@ -1,0 +1,19 @@
+# Complete portable JSON: local verification
+
+One record per backend feature: Verification. Domain index: [backend](../README.md).
+
+## Verification
+
+_Originally `BE/PORTABLE_JSON_COMPLETE_VERIFICATION.md`: Complete portable JSON: local verification._
+
+2026-10-22. Locally verified schema72 /219 API operations. Prior accepted foundation is [schema70 evidence](portable-json.md#verification). [Design](portable-json.md#implementation), [source map](portable-json.md#source-map), [separate review](portable-json.md#review). The complete local generation/disclosure batch is accepted; external launch gates remain separate.
+
+Executed focused checks:10 unit/19 integration in `.tools/portable-json-reviewed-focus.log`, zero failures/errors/skips, plus3 configuration checks in `.tools/portable-json-config-focus.log`. The19 include2 real HTTP scenarios,16 dedicated PostgreSQL tests and populated69/repeated migration. Actual encrypted files were generated/decrypted/downloaded for buyer and vendor organizations in both countries. Populated order prices/messages/saved intent and actor masks, Unicode catalogue/current and historical pricing, original approval replay, key/integrity rollback, source grants, role revocation/committing race, global row/UTF-8 bounds, an actual25s snapshot timeout, held expiry/resumed disposal and held-ciphertext capacity were exercised. Capacity fixtures are deliberately schema-valid synthetic ciphertext and are never claimed as decrypted content.
+
+Packaged schema72 migration, non-root/read-only startup/default-off routes, unconfigured feature/worker/provider rejection and existing native sandbox/qualification checks passed. Image `sha256:3cb56110a08e321741b9f562d83ca0b61e17846d01f78be001a0805f6065c372`; JAR SHA256 `3de9370b10487327542a1ae27e320f4bc25313f5d0ad06da4b4a82796b116a56`. Provenance matched937 application classes/77 resources and native processor bytes `ff9918fb7448b86eb0935d6143ba1ab288eca4e9dd67b80c977387ebf994f61f`. Cached advisory scan:25 MEDIUM/4 LOW; no HIGH/CRITICAL or detected Java-package findings. Manually built ImageMagick publisher-review limitation remains. Offline source-secret scan found zero secrets. The first scanner attempt tried remote Maven metadata and received429; the required offline rerun completed successfully, without changing dependencies.
+
+The frozen full wrapper passed **1,403 checks** (165 unit/1,238 integration), including973 real HTTP scenarios, zero failures/errors/skips, in20:51 min. All604 frozen executable/test/build/grant/contract inputs matched. Final direct-runtime private requester/reference/artifact SELECT and job UPDATE denial, default-off routes, current-action-disabled case state, clean/populated/repeated migrations and existing native/race/failure checks passed. Records: `.tools/portable-json-complete-final-verify.log`, `.tools/portable-json-complete-final-evidence.json` and `.tools/portable-json-complete-frozen-source.json`. One recorded Ryuk helper briefly remained immediately after JVM exit and disappeared automatically; the final owned-container/network inventory is empty. No unknown resource was deleted.
+
+Matched packaged image/JAR/native, source-secret, cached advisory, license inventory, document/reference and cleanup checks passed. A source document or generated contract alone was not used as fulfillment evidence. This acceptance covers actual local complete-file generation and requester disclosure, rather than only the earlier storage foundation.
+
+No live provider call, real operator enrollment, legal conclusion, client implementation, independent redaction/archive/recovery acceptance, merge or production action is claimed. JSON completion is server-side authorized disclosure rather than proof of network receipt. Redaction still requires independent verified intent/completion evidence and reviewed legal/hold/containment procedure.

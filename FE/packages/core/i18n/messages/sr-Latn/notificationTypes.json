@@ -1,0 +1,26 @@
+{
+  "ORDER_SUBMITTED": {
+    "label": "Nova porudžbina",
+    "description": "Kupac vam pošalje porudžbinu"
+  },
+  "ORDER_STATUS_CHANGED": {
+    "label": "Promena statusa porudžbine",
+    "description": "Porudžbina je prihvaćena, odbijena, premeštena u fazu, poslata ili isporučena"
+  },
+  "CANCELLATION_REQUESTED": {
+    "label": "Zahtev za otkazivanje",
+    "description": "Kupac traži otkazivanje prihvaćene porudžbine"
+  },
+  "CANCELLATION_RESOLVED": {
+    "label": "Odgovor na otkazivanje",
+    "description": "Zahtev za otkazivanje je odobren, odbijen ili povučen"
+  },
+  "MESSAGE_CREATED": {
+    "label": "Nova poruka uz porudžbinu",
+    "description": "Neko napiše poruku uz porudžbinu"
+  },
+  "RELATIONSHIP_DISCONNECTED": {
+    "label": "Partner je odvezan",
+    "description": "Poslovna saradnja je prekinuta"
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "basis": "Delivered orders by order date ({timezone}), net excl. VAT. CSV exports are on the web.",
+  "buyerLine": "{orders} · avg {avg} · last {last}"
+}

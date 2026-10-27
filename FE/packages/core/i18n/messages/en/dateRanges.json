@@ -1,0 +1,21 @@
+{
+  "label": "Period",
+  "preset": {
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+    "90d": "Last 90 days",
+    "12m": "Last 12 months",
+    "ytd": "This year",
+    "5y": "Last 5 years"
+  },
+  "custom": "Custom range",
+  "from": "From",
+  "to": "To",
+  "apply": "Apply",
+  "problem": {
+    "INVALID_DATE": "Enter both dates.",
+    "REVERSED": "The start must be before the end.",
+    "FUTURE": "Dates can't be in the future.",
+    "TOO_LONG": "A period can span at most 60 calendar months."
+  }
+}

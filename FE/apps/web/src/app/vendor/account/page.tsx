@@ -1,7 +1,5 @@
-"use client";
-
-import { ProfilePage } from "@/features/org-admin/pages";
+import { ProfilePanel } from "@/features/account/profile-panel";
 
 export default function Page() {
-  return <ProfilePage />;
+  return <ProfilePanel />;
 }

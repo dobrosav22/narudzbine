@@ -1,0 +1,4 @@
+{
+  "basis": "Isporučene narudžbine po datumu narudžbine ({timezone}), neto bez PDV-a. CSV izvoz je dostupan na vebu.",
+  "buyerLine": "{orders} · prosek {avg} · poslednja {last}"
+}

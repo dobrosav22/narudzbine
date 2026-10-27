@@ -3,83 +3,84 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDownIcon, PackageSearchIcon, PlusIcon, SearchIcon, Settings2Icon } from "lucide-react";
-import { formatMoney, formatNumber, isAtLimit, LOW_STOCK_THRESHOLD, usageLine, type Product } from "@repo/core";
-import { ProductImage } from "@/components/product-image";
-import { ErrorState, EmptyState, RowsSkeleton } from "@/components/query-states";
+import { ChevronLeftIcon, ChevronRightIcon, FileUpIcon, PackageSearchIcon, PlusIcon, SearchIcon, StarIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { formatMoney, formatNumber, productLimitReached, type Pricing, type Product, type ProductListQuery } from "@repo/core";
+import { EmptyState, ErrorState, RowsSkeleton } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { PlanLimitNotice } from "@/features/subscription/plan-limit";
 import { CatalogueNav } from "@/features/merchandising/catalogue-nav";
+import { useBusiness } from "@/lib/session";
 import { BulkActionsBar } from "./bulk-actions";
-import { TaxonomySheet } from "./taxonomy-sheet";
-import { useCategories, useVendorPlan, useTags, useVendorOrg, useVendorProducts } from "./queries";
-import { useTranslations } from "next-intl";
-import { useMsg } from "@/lib/i18n";
+import { PlanLimitAlert, ProductStateBadge, ProductThumb } from "./parts";
+import { usePlanUsage, usePricings, useProducts, useTaxonomy } from "./queries";
 
 const ALL = "all";
-type StatusFilter = "all" | "active" | "inactive";
+const PAGE_SIZE = 25;
+type StateFilter = typeof ALL | Product["state"];
+type Sort = NonNullable<ProductListQuery["sort"]>;
 
-/** 03 → "Catalogue": table view, filter/search by category/tag, bulk-select for bulk price/tag edits. */
-export function VendorCatalogueScreen({ vendorOrgId }: { vendorOrgId: string }) {
+/** Vendor catalogue: server-side search, filters, sort and paging; page selection drives atomic bulk edits. */
+export function VendorCatalogueScreen() {
   const t = useTranslations("vendorCatalogue");
-  const tb = useTranslations("browse");
-  const tm = useMsg();
   const router = useRouter();
+  const { organization } = useBusiness();
   const [search, setSearch] = useState("");
+  const [state, setState] = useState<StateFilter>(ALL);
   const [categoryId, setCategoryId] = useState(ALL);
-  const [tagIds, setTagIds] = useState<string[]>([]);
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const [tagId, setTagId] = useState(ALL);
+  const [sort, setSort] = useState<Sort>("NAME_ASC");
+  const [page, setPage] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [taxonomyOpen, setTaxonomyOpen] = useState(false);
-  const deferredSearch = useDeferredValue(search);
+  const q = useDeferredValue(search.trim());
 
-  const org = useVendorOrg(vendorOrgId);
-  const categories = useCategories(vendorOrgId);
-  const tags = useTags(vendorOrgId);
-  const usage = useVendorPlan(vendorOrgId);
-  const products = useVendorProducts({
-    vendorOrgId,
-    search: deferredSearch,
-    categoryId: categoryId === ALL ? undefined : categoryId,
-    tagIds,
-  });
+  const query: ProductListQuery = {
+    page,
+    size: PAGE_SIZE,
+    includeTotal: true,
+    sort,
+    ...(q ? { q } : {}),
+    ...(state !== ALL ? { state } : {}),
+    ...(categoryId !== ALL ? { categoryId } : {}),
+    ...(tagId !== ALL ? { tagId } : {}),
+  };
+  const products = useProducts(query);
+  const categories = useTaxonomy("categories");
+  const tags = useTaxonomy("tags");
+  const units = useTaxonomy("units");
+  const plan = usePlanUsage();
+  const items = useMemo(() => products.data?.items ?? [], [products.data]);
+  const pricingResults = usePricings(items.map((p) => p.id));
+  const pricingById = new Map<string, Pricing>();
+  pricingResults.forEach((r, i) => r.data && pricingById.set(items[i]!.id, r.data));
 
-  const categoryName = useMemo(() => new Map(categories.data?.map((c) => [c.id, c.name])), [categories.data]);
-  const tagName = useMemo(() => new Map(tags.data?.map((t) => [t.id, t.name])), [tags.data]);
-  const visible = useMemo(
-    () =>
-      (products.data ?? []).filter((p) => (status === "all" ? true : status === "active" ? p.isActive : !p.isActive)),
-    [products.data, status],
+  const names = useMemo(
+    () => ({
+      category: new Map(categories.data?.map((c) => [c.id, c.name])),
+      tag: new Map(tags.data?.map((c) => [c.id, c.name])),
+      unit: new Map(units.data?.map((c) => [c.id, c.name])),
+    }),
+    [categories.data, tags.data, units.data],
   );
-  // Selection survives filtering, but only rows still in the catalogue count.
-  const selected = useMemo(() => (products.data ?? []).filter((p) => selectedIds.has(p.id)), [products.data, selectedIds]);
-  const allVisibleSelected = visible.length > 0 && visible.every((p) => selectedIds.has(p.id));
-  const someVisibleSelected = visible.some((p) => selectedIds.has(p.id));
-  const filtering = search !== "" || categoryId !== ALL || tagIds.length > 0 || status !== "all";
-  const atLimit = isAtLimit(usage.data, "products");
 
+  const selected = items.filter((p) => selectedIds.has(p.id));
+  const allSelected = items.length > 0 && items.every((p) => selectedIds.has(p.id));
+  const filtering = q !== "" || state !== ALL || categoryId !== ALL || tagId !== ALL;
+  const atLimit = productLimitReached(plan.data);
+  const total = products.data?.total ?? null;
+  const lastPage = total !== null ? Math.max(0, Math.ceil(total / PAGE_SIZE) - 1) : page;
+
+  /** Any filter change starts from the first page with nothing selected. */
+  const refilter = <T,>(set: (v: T) => void) => (v: T) => {
+    set(v);
+    setPage(0);
+    setSelectedIds(new Set());
+  };
   const toggle = (id: string, on: boolean) =>
     setSelectedIds((s) => {
       const next = new Set(s);
@@ -94,17 +95,23 @@ export function VendorCatalogueScreen({ vendorOrgId }: { vendorOrgId: string }) 
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {org.data ? org.data.name : " "}
-            {usage.data && ` · ${tm(usageLine(usage.data, "products"))}`}
+            {organization.displayName}
+            {plan.data &&
+              ` · ${t("usage", {
+                count: plan.data.nonArchivedProductCount,
+                countText: formatNumber(plan.data.nonArchivedProductCount),
+                limit: formatNumber(plan.data.plan.productLimit),
+              })}`}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setTaxonomyOpen(true)}>
-            <Settings2Icon data-icon="inline-start" />
-            {t("taxonomy")}
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/vendor/catalogue/import">
+              <FileUpIcon data-icon="inline-start" />
+              {t("importCsv")}
+            </Link>
           </Button>
-          {/* v1.1 hard block (01 §2): usage is checked first; at or over the limit the control is disabled outright. */}
-          {atLimit || !usage.data ? (
+          {atLimit ? (
             <Button disabled>
               <PlusIcon data-icon="inline-start" />
               {t("addProduct")}
@@ -120,7 +127,7 @@ export function VendorCatalogueScreen({ vendorOrgId }: { vendorOrgId: string }) 
         </div>
       </div>
 
-      {usage.data && atLimit && <PlanLimitNotice plan={usage.data} limit="products" />}
+      {atLimit && <PlanLimitAlert plan={plan.data} />}
 
       <CatalogueNav />
 
@@ -131,19 +138,35 @@ export function VendorCatalogueScreen({ vendorOrgId }: { vendorOrgId: string }) 
           </InputGroupAddon>
           <InputGroupInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            maxLength={100}
+            onChange={(e) => refilter(setSearch)(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            aria-label={tb("searchAria")}
+            aria-label={t("searchAria")}
           />
         </InputGroup>
         <div className="flex flex-wrap gap-2">
-          <Select value={categoryId} onValueChange={setCategoryId}>
-            <SelectTrigger className="w-44" aria-label={tb("filterCategory")}>
+          <Select value={state} onValueChange={refilter((v: string) => setState(v as StateFilter))}>
+            <SelectTrigger className="w-40" aria-label={t("filterState")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value={ALL}>{tb("allCategories")}</SelectItem>
+                <SelectItem value={ALL}>{t("allStates")}</SelectItem>
+                {(["ACTIVE", "INACTIVE", "ARCHIVED"] as const).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {t(`state.${s}`)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Select value={categoryId} onValueChange={refilter(setCategoryId)}>
+            <SelectTrigger className="w-44" aria-label={t("filterCategory")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={ALL}>{t("allCategories")}</SelectItem>
                 {categories.data?.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
@@ -152,77 +175,56 @@ export function VendorCatalogueScreen({ vendorOrgId }: { vendorOrgId: string }) 
               </SelectGroup>
             </SelectContent>
           </Select>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" aria-label={tb("filterTag")}>
-                {tagIds.length ? tb("tagsCount", { count: tagIds.length }) : tb("allTags")}
-                <ChevronDownIcon data-icon="inline-end" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-44">
-              <DropdownMenuGroup>
-                {tags.data?.map((tag) => (
-                  <DropdownMenuCheckboxItem
-                    key={tag.id}
-                    checked={tagIds.includes(tag.id)}
-                    onCheckedChange={(on) => setTagIds((ids) => (on ? [...ids, tag.id] : ids.filter((x) => x !== tag.id)))}
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    {tag.name}
-                  </DropdownMenuCheckboxItem>
+          <Select value={tagId} onValueChange={refilter(setTagId)}>
+            <SelectTrigger className="w-40" aria-label={t("filterTag")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={ALL}>{t("allTags")}</SelectItem>
+                {tags.data?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
                 ))}
-              </DropdownMenuGroup>
-              {tagIds.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem onSelect={() => setTagIds([])}>{tb("clearTags")}</DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            value={status}
-            onValueChange={(v) => v && setStatus(v as StatusFilter)}
-            aria-label={t("filterStatus")}
-          >
-            <ToggleGroupItem value="all">{t("all")}</ToggleGroupItem>
-            <ToggleGroupItem value="active">{t("active")}</ToggleGroupItem>
-            <ToggleGroupItem value="inactive">{t("inactive")}</ToggleGroupItem>
-          </ToggleGroup>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={refilter((v: string) => setSort(v as Sort))}>
+            <SelectTrigger className="w-40" aria-label={t("sortAria")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="NAME_ASC">{t("sortName")}</SelectItem>
+                <SelectItem value="CREATED_DESC">{t("sortNewest")}</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {selected.length > 0 && (
         <BulkActionsBar
-          vendorOrgId={vendorOrgId}
           selected={selected}
+          pricing={pricingById}
           categories={categories.data ?? []}
           tags={tags.data ?? []}
           onDone={() => setSelectedIds(new Set())}
         />
       )}
 
-      {products.isPending || org.isPending ? (
+      {products.isPending ? (
         <RowsSkeleton />
-      ) : products.isError || org.isError ? (
-        <ErrorState
-          error={products.error ?? org.error}
-          onRetry={() => {
-            void products.refetch();
-            void org.refetch();
-          }}
-        />
-      ) : visible.length === 0 ? (
+      ) : products.isError ? (
+        <ErrorState error={products.error} onRetry={() => void products.refetch()} />
+      ) : items.length === 0 ? (
         <EmptyState
           icon={PackageSearchIcon}
-          title={filtering ? tb("noMatches") : t("emptyTitle")}
+          title={filtering ? t("noMatches") : t("emptyTitle")}
           description={filtering ? t("noMatchesHint") : t("emptyDescription")}
         >
-          {!filtering && (
+          {!filtering && !atLimit && (
             <Button asChild>
               <Link href="/vendor/catalogue/new">
                 <PlusIcon data-icon="inline-start" />
@@ -232,114 +234,120 @@ export function VendorCatalogueScreen({ vendorOrgId }: { vendorOrgId: string }) 
           )}
         </EmptyState>
       ) : (
-        <div className="rounded-lg border">
-          <Table className="text-sm">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
-                  <Checkbox
-                    aria-label={t("selectAll")}
-                    checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
-                    onCheckedChange={(on) =>
-                      setSelectedIds((s) => {
-                        const next = new Set(s);
-                        for (const p of visible) {
-                          if (on === true) next.add(p.id);
-                          else next.delete(p.id);
-                        }
-                        return next;
-                      })
-                    }
-                  />
-                </TableHead>
-                <TableHead className="w-32">{t("sku")}</TableHead>
-                <TableHead>{t("product")}</TableHead>
-                <TableHead className="hidden md:table-cell">{t("category")}</TableHead>
-                <TableHead className="text-right">{t("basePrice")}</TableHead>
-                {org.data.tracksInventory && <TableHead className="text-right">{t("stock")}</TableHead>}
-                <TableHead className="hidden text-right lg:table-cell">{t("minQty")}</TableHead>
-                <TableHead className="text-right">{t("status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((p) => (
-                <TableRow
-                  key={p.id}
-                  data-state={selectedIds.has(p.id) ? "selected" : undefined}
-                  className={`cursor-pointer ${p.isActive ? "" : "text-muted-foreground"}`}
-                  onClick={() => router.push(`/vendor/catalogue/${p.id}`)}
-                >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+        <>
+          <div className="rounded-lg border">
+            <Table className="text-sm">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
                     <Checkbox
-                      aria-label={t("select", { name: p.name })}
-                      checked={selectedIds.has(p.id)}
-                      onCheckedChange={(on) => toggle(p.id, on === true)}
+                      aria-label={t("selectAll")}
+                      checked={allSelected ? true : selected.length > 0 ? "indeterminate" : false}
+                      onCheckedChange={(on) => setSelectedIds(on === true ? new Set(items.map((p) => p.id)) : new Set())}
                     />
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{p.sku}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <ProductImage src={p.imageUrl} className="size-10" />
-                      <div className="flex flex-col gap-1">
-                        <Link
-                          href={`/vendor/catalogue/${p.id}`}
-                          className="font-medium hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {p.name}
-                        </Link>
-                        {/* Tags render once their names have loaded — no placeholder flash. */}
-                        {p.tagIds.length > 0 && tags.data && (
-                          <div className="flex flex-wrap gap-1">
-                            {p.tagIds.map((id) => (
-                              <Badge key={id} variant="outline">
-                                {tagName.get(id)}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {p.categoryId ? categoryName.get(p.categoryId) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {formatMoney(p.basePrice)}
-                    <span className="font-sans text-muted-foreground"> / {p.unit}</span>
-                  </TableCell>
-                  {org.data.tracksInventory && (
-                    <TableCell className="text-right">
-                      <StockCell product={p} />
-                    </TableCell>
-                  )}
-                  <TableCell className="hidden text-right font-mono tabular-nums lg:table-cell">
-                    {p.minOrderQuantity ? formatNumber(p.minOrderQuantity) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={p.isActive ? "success" : "secondary"}>{p.isActive ? t("active") : t("inactive")}</Badge>
-                  </TableCell>
+                  </TableHead>
+                  <TableHead className="w-32">{t("sku")}</TableHead>
+                  <TableHead>{t("product")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("category")}</TableHead>
+                  <TableHead className="text-right">{t("basePrice")}</TableHead>
+                  <TableHead className="hidden text-right lg:table-cell">{t("quantities")}</TableHead>
+                  <TableHead className="text-right">{t("status")}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {items.map((p, i) => (
+                  <TableRow
+                    key={p.id}
+                    data-state={selectedIds.has(p.id) ? "selected" : undefined}
+                    className={`cursor-pointer ${p.state === "ACTIVE" ? "" : "text-muted-foreground"}`}
+                    onClick={() => router.push(`/vendor/catalogue/${p.id}`)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox aria-label={t("select", { name: p.name })} checked={selectedIds.has(p.id)} onCheckedChange={(on) => toggle(p.id, on === true)} />
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{p.sku}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <ProductThumb assetId={p.galleryAssetIds[0]} className="size-10" />
+                        <div className="flex min-w-0 flex-col gap-1">
+                          <Link href={`/vendor/catalogue/${p.id}`} className="font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+                            {p.name}
+                          </Link>
+                          {(p.featured || p.tagIds.length > 0) && (
+                            <div className="flex flex-wrap gap-1">
+                              {p.featured && (
+                                <Badge variant="info">
+                                  <StarIcon data-icon="inline-start" />
+                                  {t("featured")}
+                                </Badge>
+                              )}
+                              {p.tagIds.map((id) => names.tag.get(id) && <Badge key={id} variant="outline">{names.tag.get(id)}</Badge>)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{(p.categoryId && names.category.get(p.categoryId)) || "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <PriceCell pricing={pricingResults[i]?.data} pending={!!pricingResults[i]?.isPending} unit={p.unitId ? names.unit.get(p.unitId) : undefined} />
+                    </TableCell>
+                    <TableCell className="hidden text-right font-mono tabular-nums lg:table-cell">
+                      {formatNumber(p.minimumQuantity)} / {formatNumber(p.quantityStep)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <ProductStateBadge state={p.state} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+            <span>
+              {total !== null && t("total", { count: total, countText: formatNumber(total) })} · {t("netNote")}
+            </span>
+            <div className="flex items-center gap-2">
+              <span>{t("page", { page: formatNumber(page + 1) })}</span>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label={t("previous")}
+                disabled={page === 0 || products.isPlaceholderData}
+                onClick={() => {
+                  setPage((n) => n - 1);
+                  setSelectedIds(new Set());
+                }}
+              >
+                <ChevronLeftIcon />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label={t("next")}
+                disabled={page >= lastPage || items.length < PAGE_SIZE || products.isPlaceholderData}
+                onClick={() => {
+                  setPage((n) => n + 1);
+                  setSelectedIds(new Set());
+                }}
+              >
+                <ChevronRightIcon />
+              </Button>
+            </div>
+          </div>
+        </>
       )}
-
-      <TaxonomySheet vendorOrgId={vendorOrgId} open={taxonomyOpen} onOpenChange={setTaxonomyOpen} />
     </div>
   );
 }
 
-/** Stock is optional everywhere (01 §3) — this cell only renders for tracking vendors. */
-function StockCell({ product }: { product: Product }) {
+function PriceCell({ pricing, pending, unit }: { pricing: Pricing | undefined; pending: boolean; unit: string | undefined }) {
   const t = useTranslations("vendorCatalogue");
-  if (product.stock === undefined) return <span className="text-muted-foreground">—</span>;
-  if (product.stock === 0) return <Badge variant="destructive">{t("outOfStock")}</Badge>;
+  if (pending) return <Skeleton className="ml-auto h-4 w-16" />;
+  if (!pricing?.basePrice) return <span className="text-muted-foreground">{t("noPrice")}</span>;
   return (
-    <span className="inline-flex items-center justify-end gap-2 font-mono tabular-nums">
-      {product.stock <= LOW_STOCK_THRESHOLD && <Badge variant="warning">{t("low")}</Badge>}
-      {formatNumber(product.stock)}
+    <span className="font-mono tabular-nums">
+      {formatMoney(pricing.basePrice, pricing.currency)}
+      {unit && <span className="font-sans text-muted-foreground"> / {unit}</span>}
     </span>
   );
 }

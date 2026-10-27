@@ -1,5 +1,5 @@
 import { IntlMessageFormat } from 'intl-messageformat';
-import en from './en.json';
+import { en } from './resources.gen';
 
 /**
  * A translatable message: a key into i18n/*.json plus ICU values. Shared code (validation,

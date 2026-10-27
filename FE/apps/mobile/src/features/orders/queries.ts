@@ -1,109 +1,151 @@
-
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
-  applyReorder,
-  parkCart,
-  placeOrder,
-  resumeDraft,
-  services,
-  type CartScope,
-  type DraftCart,
-  type ListOrdersParams,
+  acceptOrder,
+  approveCancellation,
+  cancelOrder,
+  createOrderMessage,
+  createOrderStage,
+  deliverOrder,
+  dispatchOrder,
+  isUncertainOutcome,
+  orderKeys,
+  orderQueries,
+  rejectCancellation,
+  rejectOrder,
+  renameOrderStage,
+  reorderOrderStages,
+  requestCancellation,
+  retireOrderStage,
+  setOrderStage,
+  withdrawCancellation,
+  type CancellationRequest,
   type Order,
+  type OrderListFilter,
+  type StageList,
 } from '@repo/core';
-import { cartStore } from '@/lib/cart';
 
-export const orderKeys = {
-  orders: (vendorOrgId: string, buyerOrgId: string) => ['orders', vendorOrgId, buyerOrgId] as const,
-  order: (orderId: string) => ['order', orderId] as const,
-  messages: (orderId: string) => ['orderMessages', orderId] as const,
-  drafts: (vendorOrgId: string, buyerOrgId: string) => ['draftCarts', vendorOrgId, buyerOrgId] as const,
-};
+/*
+ * Orders hooks for both the buyer and the vendor screens (one module: the order resource, its
+ * events, messages and cancellation requests are shared by both parties).
+ */
 
-export function useBuyerLocations(buyerOrgId: string) {
-  return useQuery({ queryKey: ['buyerLocations', buyerOrgId], queryFn: () => services.locations.listBuyerLocations(buyerOrgId) });
-}
-
-export function useBuyerUsers(buyerOrgId: string) {
-  return useQuery({ queryKey: ['buyerUsers', buyerOrgId], queryFn: () => services.team.listBuyerUsers(buyerOrgId) });
-}
-
-export function useStatusConfig(vendorOrgId: string) {
-  return useQuery({ queryKey: ['statusConfig', vendorOrgId], queryFn: () => services.orderStatusConfig.get(vendorOrgId) });
-}
-
-/** Includes inactive products: past orders must still show their names. */
-export function useVendorProductNames(vendorOrgId: string) {
-  return useQuery({
-    queryKey: ['productNames', vendorOrgId],
-    queryFn: async () => {
-      const products = await services.catalogue.listProducts({ vendorOrgId, includeInactive: true });
-      return new Map(products.map((p) => [p.id, p]));
-    },
-  });
-}
-
-export function useDraftCarts(scope: CartScope | undefined, currentUserId: string) {
-  return useQuery({
-    queryKey: orderKeys.drafts(scope?.vendorOrgId ?? '', scope?.buyerOrgId ?? ''),
-    queryFn: () => services.draftCarts.list({ ...scope!, currentUserId }),
-    enabled: !!scope,
-  });
-}
-
-export function useBuyerOrders(scope: CartScope | undefined, filters: Pick<ListOrdersParams, 'locationId' | 'statusKey'>) {
-  return useQuery({
-    queryKey: [...orderKeys.orders(scope?.vendorOrgId ?? '', scope?.buyerOrgId ?? ''), filters],
-    queryFn: () => services.orders.listOrders({ ...scope!, ...filters }),
-    enabled: !!scope,
-    placeholderData: (prev) => prev,
-  });
+export function useOrderList(filter: OrderListFilter, enabled = true) {
+  return useInfiniteQuery({ ...orderQueries.list(filter), enabled, placeholderData: keepPreviousData });
 }
 
 export function useOrder(orderId: string) {
-  return useQuery({ queryKey: orderKeys.order(orderId), queryFn: () => services.orders.getOrder(orderId) });
+  return useQuery(orderQueries.detail(orderId));
 }
 
+export function useOrderEvents(orderId: string) {
+  return useInfiniteQuery(orderQueries.events(orderId));
+}
 
-export function useParkCart(scope: CartScope | undefined, userId: string) {
+export function useOrderMessages(orderId: string) {
+  return useInfiniteQuery({ ...orderQueries.messages(orderId), refetchInterval: 60_000 });
+}
+
+export function useCancellationRequest(orderId: string, requestId: string | null) {
+  return useQuery({ ...orderQueries.cancellationRequest(orderId, requestId ?? ''), enabled: !!requestId });
+}
+
+export function useOrderPartners() {
+  return useQuery(orderQueries.partners());
+}
+
+export function useFulfillmentLocations(enabled: boolean) {
+  return useQuery({ ...orderQueries.fulfillmentLocations(), enabled });
+}
+
+export function useOrderStages(enabled = true) {
+  return useQuery({ ...orderQueries.stages(), enabled });
+}
+
+/** After any lifecycle change: the response is the full current Order; lists and history are stale. */
+function settleOrder(qc: QueryClient, order: Order) {
+  qc.setQueryData(orderKeys.detail(order.id), order);
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: orderKeys.lists() }),
+    qc.invalidateQueries({ queryKey: orderKeys.events(order.id) }),
+    // A direct vendor cancellation resolves a pending request.
+    qc.invalidateQueries({ queryKey: ['orders', 'cancellationRequest', order.id] }),
+  ]);
+}
+
+/** Cancellation requests return the request, not the order: refetch the order and its history. */
+function settleRequest(qc: QueryClient, request: CancellationRequest) {
+  qc.setQueryData(orderKeys.cancellationRequest(request.orderId, request.id), request);
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: orderKeys.detail(request.orderId) }),
+    qc.invalidateQueries({ queryKey: orderKeys.lists() }),
+    qc.invalidateQueries({ queryKey: orderKeys.events(request.orderId) }),
+  ]);
+}
+
+/**
+ * A definite failure (409 REVISION_CONFLICT/INVALID_STATE, ...) means our copy may be stale: refetch so
+ * the screen shows the truth. After an uncertain outcome keep the copy, so retrying sends the exact
+ * same expectedRevision/body and the backend replays the original success.
+ */
+function refetchOnConflict(qc: QueryClient, orderId: string) {
+  return (error: unknown) => {
+    if (!isUncertainOutcome(error)) void qc.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
+  };
+}
+
+function useOrderMutation<I extends { orderId: string }>(fn: (input: I) => Promise<Order>) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => parkCart(services, cartStore, scope!, userId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: orderKeys.drafts(scope!.vendorOrgId, scope!.buyerOrgId) }),
+    mutationFn: fn,
+    onSuccess: (order) => settleOrder(qc, order),
+    onError: (e, input) => refetchOnConflict(qc, input.orderId)(e),
   });
 }
 
-export function useDiscardDraft(scope: CartScope | undefined) {
+function useRequestMutation<I extends { orderId: string }>(fn: (input: I) => Promise<CancellationRequest>) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (draft: DraftCart) => services.draftCarts.discard(draft.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: orderKeys.drafts(scope!.vendorOrgId, scope!.buyerOrgId) }),
+    mutationFn: fn,
+    onSuccess: (request) => settleRequest(qc, request),
+    onError: (e, input) => refetchOnConflict(qc, input.orderId)(e),
   });
 }
 
-export function useResumeDraft(scope: CartScope | undefined) {
-  return (draft: DraftCart) => scope && resumeDraft(cartStore, scope, draft);
-}
+export const useAcceptOrder = () => useOrderMutation(acceptOrder);
+export const useRejectOrder = () => useOrderMutation(rejectOrder);
+export const useCancelOrder = () => useOrderMutation(cancelOrder);
+export const useSetOrderStage = () => useOrderMutation(setOrderStage);
+export const useDispatchOrder = () => useOrderMutation(dispatchOrder);
+export const useDeliverOrder = () => useOrderMutation(deliverOrder);
+export const useRequestCancellation = () => useRequestMutation(requestCancellation);
+export const useWithdrawCancellation = () => useRequestMutation(withdrawCancellation);
+export const useApproveCancellation = () => useRequestMutation(approveCancellation);
+export const useRejectCancellation = () => useRequestMutation(rejectCancellation);
 
-export function usePlaceOrder(scope: CartScope | undefined, userId: string) {
+export function useSendOrderMessage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (locationId: string) => placeOrder(services, cartStore, scope!, { createdByUserId: userId, locationId }),
-    onSuccess: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: orderKeys.orders(scope!.vendorOrgId, scope!.buyerOrgId) }),
-        qc.invalidateQueries({ queryKey: orderKeys.drafts(scope!.vendorOrgId, scope!.buyerOrgId) }),
-        // Most-ordered shelf and stock numbers change with a new order.
-        qc.invalidateQueries({ queryKey: ['buyerCatalogue', scope!.vendorOrgId] }),
-      ]),
+    mutationFn: createOrderMessage,
+    onSuccess: (message) => qc.invalidateQueries({ queryKey: orderKeys.messages(message.orderId) }),
   });
 }
 
-/** Reorder into the cart of the ORDER's vendor (not necessarily the active one). */
-export function useReorder() {
+// ── Custom stage configuration (vendor owner/admin) ──
+
+function useStageMutation<I, R>(fn: (input: I) => Promise<R>) {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (order: Order) => services.orders.reorder(order.id),
-    onSuccess: (result, order) => applyReorder(cartStore, { buyerOrgId: order.buyerOrgId, vendorOrgId: order.vendorOrgId }, result),
+    mutationFn: fn,
+    onSuccess: (result) => {
+      // Reorder returns the whole list; single-stage writes change the list revision too.
+      if (result && typeof result === 'object' && 'stages' in result) qc.setQueryData(orderKeys.stages(), result as unknown as StageList);
+      return qc.invalidateQueries({ queryKey: orderKeys.stages() });
+    },
+    onError: () => void qc.invalidateQueries({ queryKey: orderKeys.stages() }),
   });
 }
 
+export const useCreateStage = () => useStageMutation(createOrderStage);
+export const useRenameStage = () => useStageMutation(renameOrderStage);
+export const useReorderStages = () => useStageMutation(reorderOrderStages);
+export const useRetireStage = () => useStageMutation(retireOrderStage);

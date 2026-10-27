@@ -1,0 +1,51 @@
+# Product activation/deactivation
+
+One record per backend feature: Implementation, Verification. Domain index: [backend](../README.md).
+
+## Implementation
+
+_Originally `BE/ACTIVATION_IMPLEMENTATION.md`: Product activation/deactivation._
+
+Delegated refinements under D-GOV-005,2026-10-19, recorded before dependent code. Preserve D-CAT-004/010/011/027/036/044, D-PRI-002/019/020 and existing stock/ordered-unit rules. These are assistant choices, not new user answers.
+
+- Store active separately from archived on the immutable vendor product identity; old products remain inactive. Product detail/list and pricing context expose the same ACTIVE/INACTIVE/ARCHIVED state. Archive clears active; restore stays inactive. Restoring an already non-archived active product is a no-op, never an implicit deactivation.
+- Explicit activation requires current catalogue authority/revision, non-archived product, valid vendor unit, positive base and, when tracking is enabled, initialized/currently confirmed stock. Zero count is valid. Activation never initializes/confirms stock or creates prices. Deactivation preserves prices/counts/history; archived products reject these publication commands.
+- Commands use the existing product revision as natural identity, matching archive/restore: a lost successful mutation retried with the old revision returns409/currentRevision and requires refetch. No separate retry key/receipt. A current desired-state no-op preserves revision/audit. Current authority is checked under the organization guard.
+- Positive base and valid unit are continuous ACTIVE invariants, enforced by deferred SQL checks across product/reference/pricing writes. Valid pre-order unit/pack changes retain existing stock-confirmation invalidation; they do not clear history or implicitly reconfirm stock. Actual order eligibility must later check current stock confirmation. Frozen unit/pack remains immutable.
+- Existing PricingUpdate.deactivateProduct is now implemented, including nested ProductUpdate.pricingCorrection. Both authorities are checked; deactivation and price/schedule update commit together. An actual combined deactivation advances pricing revision even if amounts are unchanged, preventing an old pricing revision from deactivating a subsequently reactivated product. A true no-op preserves both revisions. Standalone pricing commands with deactivateProduct=true additionally retain actor/product/full-intent natural success receipts for7 days and expired tombstones. This protects even an original inactive/unchanged-price no-op from deactivating a later activation on retry; replay reauthorizes before returning the original pricing response. No new header key. Invalid schedule/stale pricing/audit failure rolls back every effect. Price-only base removal while ACTIVE returns DEACTIVATION_REQUIRED. Adding prices never activates.
+- Catalogue uses narrow pricing/stock policy ports implemented by their owning modules; no forbidden dependency edges. Schema31 adds no fictitious orders, confirmations or activation. Actual buyer offers, ordering, bulk/CSV/media and provider/client/full-slice acceptance remain subsequent work.
+
+Runtime: retain existing catalogue/stock/pricing/audit grants and add SELECT/INSERT on pricing_deactivation_replay; UPDATE(original_result) only for expired payload compaction. No DELETE. Migration owner applies V20261019210000; readiness31. Existing products remain inactive, without price/stock/history changes. All122 configured routes remain default-off behind identity.http.enabled. [Verification](#verification) separates local evidence from unexecuted gates. Internal compaction exists; no retention scheduler is claimed.
+
+## Verification
+
+_Originally `BE/ACTIVATION_VERIFICATION.md`: Product activation verification._
+
+2026-10-19, local backend/infrastructure evidence. No frontend application changes, provisioning/purchase, push/merge or deployment. Local uncommitted artifacts are not a remote backup.
+
+### Focused checks and review
+
+.tools/activation-focused-final.log:10 HTTP/transaction groups, one schema30-to31 preservation case and three contract/architecture checks passed, zero failures/errors/skips, BUILD SUCCESS.
+
+- RSD/BAM staged missing-unit/missing-base rejection; adding unit/pricing remains inactive; explicit activation/deactivation; current desired-state no-op; stale revision conflict; ACTIVE/INACTIVE list filters; no off-mode count initialization. Prices/counts/history retained on deactivation.
+- Tracking-on current confirmed zero count permits activation. New absent-count product cannot activate until explicit stock initialization. Archive clears active; restore remains inactive and requires fresh stock confirmation before reactivation. Archived publication commands reject. Restore of already non-archived active product is a no-op; active unit removal rejects.
+- Active base removal without explicit deactivation rejects; combined unchanged-price deactivation consumes pricing revision. Actual combined removal and nested catalogue/pricing corrections commit together. Original true-deactivation pricing success/no-op replays without deactivating a later activation. Exact seven-day expiry and expired payload compaction retain tombstones. No new retry header key.
+- Actual PostgreSQL-blocked activation versus price removal serializes to one success/one conflict and never active-without-base; pending staff activation rechecks committing removal. Buyer/platform/foreign scope denial and browser CSRF hold. SQL rejects active base/unit removal directly.
+- Audit failure rolls back activation. Pricing-history failure rolls back nested catalogue/pricing/deactivation. Receipt failure rolls back combined publication/pricing/audit. Successful retry after definite rollback works.
+- Schema30 fixture retains exact counts/credits/epochs/events/replay across migration31, creates no activation, and passes readiness. Clean/earlier migrations run in the full gate.
+
+Distinct primary review covered policy-port module boundaries, current organization/account/session authority, shared projections, revision no-ops/archive/restore, active unit/base deferred checks, tracked confirmation and source generation, combined correction atomicity, current-authority replay/expiry, and grant/security scope. Review caught an original inactive pricing no-op could later deactivate on retry: added natural full-intent success receipts and a regression. Focused tests caught an empty changed-field price audit on same-price deactivation; preserve the actual product state audit and coordinated pricing history/revision, with no fictitious price-field audit. Also corrected an overly broad security-regex edit before final checks. No failed scenario was skipped.
+
+### Final gate and packaged/security checks
+
+First full .tools/activation-final-verify.log caught two legacy expectations: a schema24 product-upgrade assertion omitted the newly added active=false default, and an old validation test expected the then-unimplemented activate route to return404. Existing fields were preserved. Updated the upgrade fixture to require the inactive default plus every prior field, and the existing validation test to require409/UNIT_REQUIRED without mutation. The initial rerun .tools/activation-final-verify-2.log was stopped after identifying it had compiled before the second test-only correction. Final unfiltered .tools/activation-final-verify-3.log passed **483 tests, zero failures/errors/skips**, BUILD SUCCESS after both corrections: Surefire50, Failsafe433 (Foundation32/AuthHttp353/IdentityBoundaries11/PasswordLogin15/SessionService22). Fresh XML totals agree with the log. No executable/schema/test/build changes followed this successful gate. No application/schema changes followed packaged checks.
+
+Packaged schema31 migration/nonroot read-only Linux startup/private readiness200/public diagnostics404 and both new default-disabled publication method/path checks passed, with earlier routes. Disposable resources were removed. .tools/vs03_activation_container_smoke.py and .tools/vs03-activation-container-smoke-result.json bind actual schema/image/JAR. Image narudzbine-backend:vs03-activation, ID sha256:0877260cfc9bad8114c7505710f46177434b83aeb6005b9d12c2c41ba5557ee2; JAR SHA256 486b3ea1d8b2722fe86e0157a9dd5af6512ef4b9756125747b772a44f27c90d3. These are local identities, not published registry digests.
+
+Cached Trivy0.76.0 scan BE/target/activation-container-vulnerabilities.json matches that image: Java/HIGH/CRITICAL0, unchanged26 MEDIUM/4 LOW Ubuntu24.04 findings, no suppressions. Advisory DB updated2026-10-16/downloaded17; Java DB updated18/downloaded19, reused offline without refresh. Not fresh production advisory status. Dependencies unchanged; previous separate dependency/SBOM advisory evidence reused. Current SBOM110 licensed runtime components. Final tested JAR is byte-identical to the built/smoked/scanned image, rechecked after full verify; the later fixes were test-only. Final source/document secret scan0; structural/link/whitespace checks pass:209 operations/204 schemas/3046 references,625 questions/545 decisions/543 requirements/trace rows. JSON/YAML agree.
+
+### Limits
+
+Buyer offer/order submission/deduction/original-credit/dispatch integration, CSV/bulk/media, retention scheduling, large lifetime-catalogue load, general replay/revision-key rotation, real provider/client/hosted CI/recovery/operator/full-slice/release acceptance remain unfinished. [Implementation](#implementation), [handoff](../../frontend/backend-handoff.md), [status](../../project/status.md).
+
+Buyer-offer follow-up: list/detail/taxonomy and exact safe buyer pricing projections are subsequently delivered in [offers implementation](offers.md#implementation)/[evidence](offers.md#verification). Earlier batch limitations describe their original verification boundary; actual order/workspace/provider/client acceptance remains unfinished.

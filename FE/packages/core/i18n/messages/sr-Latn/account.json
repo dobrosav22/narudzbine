@@ -1,0 +1,137 @@
+{
+  "nav": {
+    "label": "Delovi naloga",
+    "profile": "Profil",
+    "security": "Prijava i bezbednost",
+    "notifications": "Obaveštenja"
+  },
+  "profile": {
+    "title": "Profil",
+    "description": "Kolege vide vaše ime. Poslovni partneri vide vašu organizaciju, a ne vas.",
+    "name": "Ime",
+    "email": "Imejl za prijavu",
+    "emailHint": "Menja se u delu Prijava i bezbednost.",
+    "home": "Matična lokacija",
+    "homeHint": "Unapred se bira kad je potrebna lokacija (na primer za dostavu). Ne ograničava šta možete da koristite.",
+    "noHome": "Bez matične lokacije",
+    "save": "Sačuvaj profil",
+    "saved": "Profil je sačuvan"
+  },
+  "language": {
+    "title": "Jezik",
+    "description": "Jezik aplikacije za vas i jezik vaših imejlova. Nazivi proizvoda i poruke ostaju kako su napisani.",
+    "label": "Jezik",
+    "inherit": "Jezik firme ({language})",
+    "saved": "Jezik je sačuvan"
+  },
+  "password": {
+    "title": "Lozinka",
+    "description": "Promena odjavljuje vaše ostale uređaje. Prvo ćete potvrditi trenutnu lozinku.",
+    "submit": "Promeni lozinku",
+    "changed": "Lozinka je promenjena. Ostali uređaji su odjavljeni."
+  },
+  "email": {
+    "title": "Imejl za prijavu",
+    "description": "Za promenu, i trenutna i nova adresa moraju da potvrde linkovima iz imejla u roku od 24 sata.",
+    "current": "Trenutna adresa",
+    "new": "Nova adresa",
+    "start": "Započni promenu",
+    "pendingTitle": "Promena na novu adresu je u toku",
+    "expires": "Linkovi ističu {date}",
+    "oldVerified": "Trenutna adresa je potvrđena",
+    "oldPending": "Trenutna adresa još nije potvrđena",
+    "newVerified": "Nova adresa je potvrđena",
+    "newPending": "Nova adresa još nije potvrđena",
+    "refresh": "Proveri status",
+    "complete": "Završi promenu",
+    "completeHint": "Obe adrese moraju biti potvrđene. Bićete odjavljeni svuda i prijavljujete se novom adresom.",
+    "cancel": "Otkaži promenu",
+    "cancelled": "Promena imejla je otkazana",
+    "completedTitle": "Imejl je promenjen",
+    "completedDescription": "Prijavite se ponovo novom adresom.",
+    "states": {
+      "PENDING": "Čeka potvrde",
+      "RECONCILING": "Završava se — ne započinjite novu promenu",
+      "COMPLETED": "Završeno",
+      "CANCELLED": "Otkazano",
+      "EXPIRED": "Isteklo"
+    },
+    "same": "To je već vaš imejl za prijavu"
+  },
+  "sessions": {
+    "title": "Gde ste prijavljeni",
+    "description": "Odjavite uređaje koje ne prepoznajete. Odjava svuda uključuje i ovaj uređaj.",
+    "device": "Uređaj",
+    "lastActive": "Poslednja aktivnost",
+    "expires": "Ističe",
+    "current": "Ovaj uređaj",
+    "revoke": "Odjavi",
+    "revoked": "Uređaj je odjavljen",
+    "revokeAll": "Odjavi se svuda…",
+    "revokeAllTitle": "Odjaviti se sa svih uređaja?",
+    "revokeAllDescription": "Ovo uključuje i ovaj pregledač; moraćete ponovo da se prijavite.",
+    "revokeAllConfirm": "Odjavi se svuda"
+  },
+  "external": {
+    "title": "Prijava preko Google i Apple naloga",
+    "description": "Povežite nalog da biste se prijavljivali preko njega. Povezivanje ili uklanjanje odjavljuje vaše ostale uređaje.",
+    "none": "Nema povezanih naloga",
+    "linkedOn": "Povezano {date}",
+    "providers": {
+      "GOOGLE": "Google",
+      "APPLE": "Apple"
+    },
+    "unlink": "Ukloni vezu",
+    "unlinkTitle": "Ukloniti vezu sa {provider} nalogom?",
+    "unlinkDescription": "Bićete odjavljeni svuda i prijavljujete se lozinkom ili drugim povezanim nalogom. Prvo potvrdite tim drugim načinom.",
+    "unlinked": "Veza sa {provider} nalogom je uklonjena"
+  },
+  "deactivate": {
+    "title": "Napuštanje organizacije",
+    "description": "Deaktivira vašu prijavu u {org}. Vaš dosadašnji rad ostaje. Samo vlasnik ili administrator može da vas ponovo aktivira.",
+    "button": "Deaktiviraj moj nalog…",
+    "confirmTitle": "Deaktivirati vaš nalog?",
+    "confirmDescription": "Bićete odjavljeni svuda i nećete moći da se prijavite dok vas neko ponovo ne aktivira.",
+    "confirm": "Deaktiviraj",
+    "notStaff": "Vlasnici i administratori ne mogu sami sebe da deaktiviraju. Vlasnik prvo mora da prenese vlasništvo; administratoru je potreban vlasnik."
+  },
+  "notifications": {
+    "title": "Obaveštenja",
+    "description": "Izaberite kako saznajete za svaki događaj. Ovo važi samo za vas. Bezbednosna obaveštenja se uvek šalju.",
+    "tableAria": "Podešavanja obaveštenja",
+    "event": "Događaj",
+    "switchAria": "{event}: {channel}",
+    "saveFailed": "Podešavanje nije sačuvano",
+    "deliveryNote": "Slanje imejlom i push obaveštenjima zavisi od toga da li je servis uključen za region vaše firme."
+  },
+  "devices": {
+    "title": "Uređaji za push obaveštenja",
+    "description": "Telefoni i pregledači registrovani za push obaveštenja. Odjava sa uređaja zaustavlja njegova obaveštenja.",
+    "none": "Nema registrovanih uređaja",
+    "platforms": {
+      "WEB": "Veb pregledač",
+      "ANDROID": "Android",
+      "IOS": "iPhone / iPad"
+    },
+    "enabled": "Prima obaveštenja",
+    "disabled": "Ne prima obaveštenja",
+    "registered": "Registrovan {date}",
+    "remove": "Ukloni",
+    "removed": "Uređaj je uklonjen",
+    "webUnavailable": "Push obaveštenja u pregledaču još nisu dostupna.",
+    "mobileUnavailable": "Registracija ovog telefona za push obaveštenja još nije dostupna."
+  },
+  "inbox": {
+    "title": "Obaveštenja",
+    "description": "Aktivnost na vašim porudžbinama i partnerima iz poslednjih 90 dana.",
+    "filter": "Prikaži",
+    "all": "Sva",
+    "unread": "Nepročitana",
+    "empty": "Nema obaveštenja",
+    "emptyUnread": "Sve ste pročitali",
+    "markRead": "Označi kao pročitano",
+    "openOrder": "Otvori porudžbinu",
+    "unreadLabel": "Nepročitano",
+    "loadMore": "Učitaj još"
+  }
+}

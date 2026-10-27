@@ -1,0 +1,41 @@
+{
+  "title": "Dobavljači",
+  "subtitle": "Dobavljači od kojih vaša firma naručuje.",
+  "tabs": {
+    "active": "Povezani",
+    "disconnected": "Prekinuti"
+  },
+  "incoming": {
+    "title": "{count, plural, one {# poziv za povezivanje} few {# poziva za povezivanje} other {# poziva za povezivanje}}",
+    "item": "Poslato na {email}; otvorite link iz tog imejla da biste prihvatili (ističe {date})."
+  },
+  "emptyTitle": "Još nema dobavljača",
+  "emptyDescription": "Dobavljači vas pozivaju na saradnju; pozivnica stiže imejlom.",
+  "emptyDisconnectedTitle": "Nema bivših dobavljača",
+  "emptyDisconnectedDescription": "Dobavljači sa kojima ste prekinuli saradnju ostaju ovde.",
+  "vendor": "Dobavljač",
+  "connectedSince": "Povezan od",
+  "disconnectedOn": "Prekinuto",
+  "actions": "Radnje",
+  "current": "Otvoren katalog",
+  "browse": "Pregledaj",
+  "since": "Povezan od {date}",
+  "disconnectedSince": "Prekinuto {date}",
+  "detail": {
+    "notFoundTitle": "Dobavljač nije pronađen",
+    "notFoundDescription": "Ova saradnja ne postoji ili nije vaša.",
+    "allVendors": "Svi dobavljači",
+    "back": "Nazad na dobavljače",
+    "formerVendor": "Bivši dobavljač",
+    "since": "Povezan od {date}",
+    "disconnectedOn": "Prekinuto {date}",
+    "browse": "Pregledaj katalog",
+    "orders": "Narudžbine",
+    "disconnectedTitle": "Saradnja je prekinuta",
+    "reason": "Razlog: {reason}",
+    "disconnectedNote": "Vaše ranije narudžbine ostaju dostupne. Za ponovnu saradnju zatražite novu pozivnicu od dobavljača.",
+    "pricesReviewTitle": "Dogovorene cene se proveravaju",
+    "pricesReviewDescription": "Posle ponovnog povezivanja {name} proverava vaše ranije dogovorene cene; do tada mogu važiti redovne cene.",
+    "noPartnerDetails": "Podaci o firmi nisu dostupni za ovu saradnju."
+  }
+}

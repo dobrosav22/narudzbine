@@ -59,7 +59,7 @@
 }
 
 /* Colour + radius variables (:root and .dark) come from the shared preset above —
-   packages/ui/tokens.cjs is the single source (BUILD_LOG 2026-09-27 "NativeWind + shared preset").
+   packages/ui/tokens.cjs is the single source (docs/frontend/build-log.md 2026-09-27 "NativeWind + shared preset").
    Do not redeclare them here; if `shadcn add` appends :root/.dark vars, move new
    tokens into tokens.cjs instead. */
 

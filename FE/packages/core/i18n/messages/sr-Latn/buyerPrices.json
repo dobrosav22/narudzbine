@@ -1,0 +1,19 @@
+{
+  "title": "Dogovorene cene kupaca",
+  "description": "Neto jedinična cena dogovorena sa jednim kupcem zamenjuje osnovnu i količinske cene za tog kupca. Akcija je i dalje može sniziti.",
+  "empty": "Još nemate povezanih kupaca.",
+  "buyer": "Kupac",
+  "price": "Dogovorena cena",
+  "basePrice": "Osnovna cena",
+  "unnamed": "Povezani kupac",
+  "awaitingConfirmation": "Čeka pregled kupca",
+  "awaitingHint": "Posle ponovnog povezivanja kupac pregleda dogovorene cene pre nego što ponovo počnu da važe.",
+  "edit": "Postavi cenu",
+  "editAria": "Postavi dogovorenu cenu za {buyer}",
+  "save": "Sačuvaj",
+  "remove": "Ukloni",
+  "removeAria": "Ukloni dogovorenu cenu za {buyer}",
+  "saved": "Dogovorena cena je sačuvana za {buyer}",
+  "removed": "{buyer} sada plaća osnovnu cenu",
+  "priceInvalid": "Unesite pozitivnu cenu sa najviše dve decimale, npr. 19,60."
+}

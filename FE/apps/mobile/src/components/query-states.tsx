@@ -1,11 +1,11 @@
 import { ActivityIndicator, Pressable, View } from 'react-native';
-import { isServiceError } from '@repo/core';
+import { isApiError } from '@repo/core';
 import { AppText } from '@/components/app-text';
 import { useTokenColors } from '@/theme';
 import { useErrorText, useT } from '@/lib/i18n';
 
 export function LoadingState({ label: given }: { label?: string }) {
-  const t = useT('m.common');
+  const t = useT('mCommon');
   const label = given ?? t('loading');
   const c = useTokenColors();
   return (
@@ -19,21 +19,21 @@ export function LoadingState({ label: given }: { label?: string }) {
   );
 }
 
-/** Mirrors web's destructive Alert. NOT_IMPLEMENTED (USE_MOCKS=false) is labelled explicitly and never retried. */
+/** Mirrors web's destructive Alert: an unreachable server (NETWORK_ERROR) gets its own title; retry when given. */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const t = useT('states');
   const errorText = useErrorText();
-  const notImplemented = isServiceError(error, 'NOT_IMPLEMENTED');
+  const unreachable = isApiError(error, 'NETWORK_ERROR');
   return (
     <View className="flex-1 bg-background p-4">
       <View className="gap-2 rounded-lg border border-border bg-card p-4" accessibilityRole="alert">
         <AppText weight="medium" className="text-sm text-destructive">
-          {notImplemented ? t('backendNotConnected') : t('somethingWentWrong')}
+          {unreachable ? t('serverUnreachable') : t('somethingWentWrong')}
         </AppText>
         <AppText className="text-sm text-destructive/90">
           {errorText(error)}
         </AppText>
-        {onRetry && !notImplemented && (
+        {onRetry && (
           <Pressable
             onPress={onRetry}
             accessibilityRole="button"

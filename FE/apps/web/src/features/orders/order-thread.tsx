@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SendIcon } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDateTime, services, type OrderMessage } from "@repo/core";
+import { useTranslations } from "next-intl";
+import {
+  codePointLength,
+  formatDateTime,
+  intentFor,
+  isUncertainOutcome,
+  MESSAGE_MAX,
+  pageItems,
+  uuidv4,
+  type PendingIntent,
+} from "@repo/core";
 import { ErrorState, RowsSkeleton } from "@/components/query-states";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
@@ -21,43 +30,63 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 import { Spinner } from "@/components/ui/spinner";
-import { initials } from "@/lib/session";
-import { useTranslations } from "next-intl";
 import { useErrorText } from "@/lib/i18n";
+import { initials } from "@/lib/session";
+import { useOrderMessages, useSendOrderMessage } from "./queries";
 
 /**
- * 01 §5 order messaging — one thread, visible to both sides. Used by the buyer
- * and vendor order screens; `side` decides which messages are "ours" (right,
- * tinted) and who sends. Composed from shadcn's chat primitives per the skill.
+ * The shared order thread (GET/POST /orders/{id}/messages), one per order, visible to both
+ * organizations. Own messages show the teammate's name; the counterparty appears only as its
+ * organization. A new message carries a UUIDv4 Idempotency-Key that is kept for an exact retry
+ * after an uncertain outcome and replaced for any new text.
  */
 export function OrderThread({
   orderId,
-  side,
-  myUserId,
+  ownOrganizationId,
+  ownOrganizationName,
+  ownAccountId,
   counterpartName,
-  senderName,
+  readOnly,
 }: {
   orderId: string;
-  side: "buyer" | "vendor";
-  myUserId: string;
-  /** Who the viewer is talking to — used in the description and placeholder. */
+  ownOrganizationId: string;
+  ownOrganizationName: string;
+  ownAccountId: string;
   counterpartName: string;
-  /** Display name for a message's sender (already resolved per side). */
-  senderName: (m: OrderMessage) => string;
+  /** Disconnected terminal orders keep a read-only thread. */
+  readOnly: boolean;
 }) {
   const t = useTranslations("orders.thread");
   const errorText = useErrorText();
-  const qc = useQueryClient();
-  const key = ["orderMessages", orderId];
-  const messages = useQuery({ queryKey: key, queryFn: () => services.orders.listOrderMessages(orderId) });
-  const send = useMutation({
-    mutationFn: (text: string) => services.orders.addOrderMessage(orderId, { senderUserId: myUserId, senderOrgType: side, text }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
-  });
+  const messages = useOrderMessages(orderId);
+  const send = useSendOrderMessage();
   const [text, setText] = useState("");
+  const [pending, setPending] = useState<PendingIntent<string> | null>(null);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = messages;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  const items = pageItems(messages.data?.pages);
+  const body = text.trim();
+  const tooLong = codePointLength(body) > MESSAGE_MAX;
+
   const submit = () => {
-    if (!text.trim()) return;
-    send.mutate(text, { onSuccess: () => setText("") });
+    if (!body || tooLong || send.isPending) return;
+    const intent = intentFor(pending, body, uuidv4);
+    setPending(intent);
+    send.mutate(
+      { orderId, text: intent.body, idempotencyKey: intent.key },
+      {
+        onSuccess: () => {
+          setText("");
+          setPending(null);
+        },
+        // Keep the key only when we cannot know whether the message was stored.
+        onError: (e) => {
+          if (!isUncertainOutcome(e)) setPending(null);
+        },
+      },
+    );
   };
 
   return (
@@ -71,7 +100,7 @@ export function OrderThread({
           <ErrorState error={messages.error} onRetry={() => void messages.refetch()} />
         ) : messages.isPending ? (
           <RowsSkeleton rows={2} />
-        ) : messages.data.length === 0 ? (
+        ) : items.length === 0 ? (
           <Marker variant="separator">
             <MarkerContent>{t("empty")}</MarkerContent>
           </Marker>
@@ -80,22 +109,23 @@ export function OrderThread({
             <MessageScroller className="max-h-96">
               <MessageScrollerViewport>
                 <MessageScrollerContent className="flex flex-col gap-4">
-                  {messages.data.map((m) => {
-                    const ours = m.senderOrgType === side;
-                    const name = m.senderUserId === myUserId ? t("you") : senderName(m);
+                  {items.map((m) => {
+                    const ours = m.authorOrganizationId === ownOrganizationId;
+                    const mine = m.ownAuthorAccountId === ownAccountId;
+                    const author = ours ? m.ownAuthorDisplayName ?? ownOrganizationName : counterpartName;
                     return (
-                      <MessageScrollerItem key={m.id} messageId={m.id} scrollAnchor={m.senderUserId === myUserId}>
+                      <MessageScrollerItem key={m.id} messageId={m.id} scrollAnchor={mine}>
                         <Message align={ours ? "end" : "start"}>
                           <MessageAvatar>
                             <Avatar className="size-8">
-                              <AvatarFallback>{initials(senderName(m))}</AvatarFallback>
+                              <AvatarFallback>{initials(author)}</AvatarFallback>
                             </Avatar>
                           </MessageAvatar>
                           <MessageContent>
-                            <MessageHeader>{name}</MessageHeader>
+                            <MessageHeader>{mine ? t("you") : author}</MessageHeader>
                             {/* Own side: subtle tinted violet, not a solid primary flood (05 §4). */}
                             <Bubble variant={ours ? "tinted" : "muted"} align={ours ? "end" : "start"}>
-                              <BubbleContent>{m.text}</BubbleContent>
+                              <BubbleContent className="whitespace-pre-wrap">{m.text}</BubbleContent>
                             </Bubble>
                             <MessageFooter>{formatDateTime(m.createdAt)}</MessageFooter>
                           </MessageContent>
@@ -110,41 +140,52 @@ export function OrderThread({
           </MessageScrollerProvider>
         )}
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-        >
-          <Field data-invalid={!!send.error || undefined}>
-            <FieldLabel htmlFor="order-message" className="sr-only">
-              {t("label", { name: counterpartName })}
-            </FieldLabel>
-            <InputGroup>
-              <InputGroupTextarea
-                id="order-message"
-                rows={2}
-                placeholder={t("placeholder", { name: counterpartName })}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    submit();
-                  }
-                }}
-              />
-              <InputGroupAddon align="block-end">
-                <span className="text-xs text-muted-foreground">{t("hint")}</span>
-                <InputGroupButton type="submit" size="sm" className="ml-auto" disabled={!text.trim() || send.isPending}>
-                  {send.isPending ? <Spinner data-icon="inline-start" /> : <SendIcon data-icon="inline-start" />}
-                  {t("send")}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-            {send.error && <p className="text-sm text-destructive">{errorText(send.error)}</p>}
-          </Field>
-        </form>
+        {readOnly ? (
+          <p className="text-sm text-muted-foreground">{t("readOnly")}</p>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit();
+            }}
+          >
+            <Field data-invalid={!!send.error || tooLong || undefined}>
+              <FieldLabel htmlFor="order-message" className="sr-only">
+                {t("label", { name: counterpartName })}
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupTextarea
+                  id="order-message"
+                  rows={2}
+                  placeholder={t("placeholder", { name: counterpartName })}
+                  value={text}
+                  aria-invalid={tooLong || undefined}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      submit();
+                    }
+                  }}
+                />
+                <InputGroupAddon align="block-end">
+                  <span className="text-xs text-muted-foreground">
+                    {tooLong ? t("tooLong", { max: MESSAGE_MAX }) : t("hint")}
+                  </span>
+                  <InputGroupButton type="submit" size="sm" className="ml-auto" disabled={!body || tooLong || send.isPending}>
+                    {send.isPending ? <Spinner data-icon="inline-start" /> : <SendIcon data-icon="inline-start" />}
+                    {t("send")}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+              {send.error && (
+                <p className="text-sm text-destructive" role="alert">
+                  {errorText(send.error)} {pending && isUncertainOutcome(send.error) ? t("uncertain") : null}
+                </p>
+              )}
+            </Field>
+          </form>
+        )}
       </CardContent>
     </Card>
   );

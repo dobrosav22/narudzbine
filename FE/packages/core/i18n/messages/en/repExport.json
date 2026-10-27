@@ -1,0 +1,29 @@
+{
+  "trigger": "Export CSV",
+  "menuLabel": "Export the selected period",
+  "kind": {
+    "ORDERS": "Orders (all states)",
+    "REPORT_PRODUCTS": "Sales by product",
+    "REPORT_BUYERS": "Sales by buyer"
+  },
+  "title": "Exports",
+  "description": "Prepared in the background; each file can be downloaded for 24 hours. Only you can download your exports.",
+  "dismiss": "Remove from list",
+  "requesting": "Requesting",
+  "uncertain": "We couldn't confirm the request.",
+  "retry": "Retry",
+  "state": {
+    "QUEUED": "Preparing",
+    "EXPIRED": "Expired"
+  },
+  "failure": {
+    "EXPORT_ROW_LIMIT": "Too many rows. Choose a shorter period.",
+    "EXPORT_SIZE_LIMIT": "The file would be too large. Choose a shorter period.",
+    "EXPORT_CAPACITY_REACHED": "Exports are busy right now. Try again later.",
+    "REPORT_OVERFLOW": "The totals are too large to export.",
+    "ACCESS_REVOKED": "You no longer have access to this export.",
+    "other": "The export failed."
+  },
+  "availableUntil": "Available until {date}",
+  "download": "Download"
+}

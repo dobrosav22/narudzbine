@@ -1,7 +1,5 @@
-"use client";
-
-import { CompanySettingsPage } from "@/features/org-admin/pages";
+import { CompanyPanel } from "@/features/org-admin/company-panel";
 
 export default function Page() {
-  return <CompanySettingsPage />;
+  return <CompanyPanel />;
 }

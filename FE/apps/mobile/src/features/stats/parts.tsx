@@ -1,39 +1,69 @@
+import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { formatMoney, formatMonth, maxRevenue, STATS_PERIODS, type PeriodBucket, type StatsPeriod } from '@repo/core';
+import {
+  DEFAULT_REPORT_RANGE,
+  formatLocalDate,
+  formatMoney,
+  formatMonth,
+  formatNumber,
+  localToday,
+  presetReportRange,
+  REPORT_RANGE_PRESETS,
+  type Currency,
+  type ReportBucket,
+  type ReportGrouping,
+  type ReportRangePreset,
+} from '@repo/core';
 import { AppText } from '@/components/app-text';
 import { Chip } from '@/components/ui/chip';
-import { useMsg, useT } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
+
+function bucketLabel(periodStart: string, grouping: ReportGrouping): string {
+  return grouping === 'DAY' ? formatLocalDate(periodStart) : formatMonth(periodStart, 'long');
+}
 
 /**
- * Month bars drawn with Views — no chart library on native. Web uses shadcn Chart
- * (recharts) for the same data. Bars use the chart-2 token (05's violet ramp); the
- * whole chart is one accessible image described month by month.
+ * Goods total per period drawn with Views (no chart library on native; web uses recharts for
+ * the same data). One accessible image listing the non-empty periods. Axis labels are sparse so
+ * up to 31 day bars stay readable.
  */
-export function MonthBars({ buckets, label, height = 120 }: { buckets: PeriodBucket[]; label: string; height?: number }) {
+export function PeriodBars({
+  buckets,
+  grouping,
+  currency,
+  label,
+  height = 120,
+}: {
+  buckets: ReportBucket[];
+  grouping: ReportGrouping;
+  currency: Currency;
+  label: string;
+  height?: number;
+}) {
   const t = useT('stats');
-  const max = maxRevenue(buckets);
-  const peak = Math.max(...buckets.map((b) => b.revenue));
+  const values = buckets.map((b) => Number(b.goodsTotal));
+  const max = Math.max(1, ...values);
+  const every = Math.max(1, Math.ceil(buckets.length / 6));
   return (
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`${t('byMonthAria', { label })}: ${buckets.map((b) => `${formatMonth(b.period, 'long')} ${formatMoney(b.revenue)}`).join(', ')}`}
+      accessibilityLabel={`${t('chartAria', { label })}: ${buckets
+        .filter((b) => b.orderCount > 0)
+        .map((b) => `${bucketLabel(b.periodStart, grouping)} ${formatMoney(b.goodsTotal, currency)}`)
+        .join(', ')}`}
       className="gap-2">
-      <View className="flex-row items-end gap-2" style={{ height }}>
-        {buckets.map((b) => (
-          <View key={b.period} className="flex-1 items-center justify-end" style={{ height }}>
-            <View
-              className={`w-full rounded-t-md ${b.revenue === peak && peak > 0 ? 'bg-chart-2' : 'bg-chart-1'}`}
-              // A hairline for empty months, so the axis reads as "nothing" rather than missing.
-              style={{ height: Math.max(2, Math.round((b.revenue / max) * height)) }}
-            />
+      <View className="flex-row items-end gap-0.5" style={{ height }}>
+        {buckets.map((b, i) => (
+          <View key={b.periodStart} className="flex-1 justify-end" style={{ height }}>
+            <View className="w-full rounded-t-sm bg-chart-2" style={{ height: Math.max(2, Math.round((values[i]! / max) * height)) }} />
           </View>
         ))}
       </View>
-      <View className="flex-row gap-2">
-        {buckets.map((b) => (
-          <AppText key={b.period} className="flex-1 text-center text-xs text-muted-foreground">
-            {formatMonth(b.period)}
+      <View className="flex-row gap-0.5">
+        {buckets.map((b, i) => (
+          <AppText key={b.periodStart} numberOfLines={1} className="flex-1 text-center text-[10px] text-muted-foreground">
+            {i % every === 0 ? (grouping === 'DAY' ? formatNumber(Number(b.periodStart.slice(8, 10))) : formatMonth(b.periodStart)) : ''}
           </AppText>
         ))}
       </View>
@@ -53,12 +83,18 @@ export function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function PeriodChips({ value, onChange }: { value: StatsPeriod; onChange: (p: StatsPeriod) => void }) {
-  const tm = useMsg();
+/** Report range presets (custom dates are web-only). */
+export function useRangeChips(initial: ReportRangePreset = DEFAULT_REPORT_RANGE) {
+  const [preset, setPreset] = useState<ReportRangePreset>(initial);
+  return { preset, setPreset, range: presetReportRange(preset, localToday()) };
+}
+
+export function RangeChips({ value, onChange }: { value: ReportRangePreset; onChange: (p: ReportRangePreset) => void }) {
+  const t = useT('dateRanges.preset');
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-4">
-      {STATS_PERIODS.map((p) => (
-        <Chip key={p.value} role="radio" label={tm({ key: p.labelKey })} selected={value === p.value} onPress={() => onChange(p.value)} />
+      {REPORT_RANGE_PRESETS.map((p) => (
+        <Chip key={p} role="radio" label={t(p)} selected={value === p} onPress={() => onChange(p)} />
       ))}
     </ScrollView>
   );

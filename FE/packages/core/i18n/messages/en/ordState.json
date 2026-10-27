@@ -1,0 +1,16 @@
+{
+  "AWAITING_ACCEPTANCE": "Awaiting acceptance",
+  "ACCEPTED": "Accepted",
+  "DISPATCHED": "Dispatched",
+  "DELIVERED": "Delivered",
+  "REJECTED": "Rejected",
+  "CANCELLED": "Cancelled",
+  "withStage": "{state} · {stage}",
+  "progress": "Order progress",
+  "step": {
+    "AWAITING_ACCEPTANCE": "Submitted",
+    "ACCEPTED": "Accepted",
+    "DISPATCHED": "Dispatched",
+    "DELIVERED": "Delivered"
+  }
+}

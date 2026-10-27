@@ -1,12 +1,9 @@
 "use client";
 
-import { SectionNav } from "@/components/section-nav";
 import { useTranslations } from "next-intl";
+import { SectionNav } from "@/components/section-nav";
 
-/**
- * [assumed] 03 lists "Featured & Promotions" as a vendor screen but the nav shape has
- * no slot for it; it lives as sections of Catalogue.
- */
+/** Catalogue sub-pages: products, featured, promotions, inventory, taxonomy and CSV import. */
 export function CatalogueNav() {
   const t = useTranslations("merch.nav");
   return (
@@ -16,6 +13,9 @@ export function CatalogueNav() {
         { href: "/vendor/catalogue", label: t("products") },
         { href: "/vendor/catalogue/featured", label: t("featured") },
         { href: "/vendor/catalogue/promotions", label: t("promotions") },
+        { href: "/vendor/catalogue/inventory", label: t("inventory") },
+        { href: "/vendor/catalogue/taxonomy", label: t("taxonomy") },
+        { href: "/vendor/catalogue/import", label: t("import") },
       ]}
     />
   );

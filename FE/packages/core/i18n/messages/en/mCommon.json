@@ -1,0 +1,11 @@
+{
+  "loading": "Loading…",
+  "loadingPlans": "Loading plans…",
+  "loadingInvite": "Loading invite…",
+  "loadingFavorites": "Loading favorites…",
+  "loadingCatalogue": "Loading catalogue…",
+  "loadingProduct": "Loading product…",
+  "all": "All",
+  "noMatchesHint": "Try a different search or category.",
+  "loadingBuyerPrices": "Loading buyer prices…"
+}

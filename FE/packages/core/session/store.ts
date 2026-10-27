@@ -1,12 +1,15 @@
-import type { AppServices } from '../services';
-import type { Membership, PlatformAdmin, Session, VendorOrg } from '../types';
-import type { AppLocale } from '../i18n/locales';
+import { api, apiConfig, data, setCsrfToken } from '../api/client';
+import { isApiError, isUnauthenticated, retryDelayMs } from '../api/problem';
+import type { Account, Locale, Organization, SessionResult } from '../api/models';
+import { resetPartnerCache } from '../queries/partners';
 
 /**
- * Session context shared by both apps (02 → "State/context you'll need"):
- * who is logged in, which of their memberships is active, and — for buyers —
- * which vendor is active. Framework-free: each app wraps it in a small React
- * hook (useSyncExternalStore) and supplies its own persistent storage.
+ * Who is signed in, shared by both apps (each wraps it with useSyncExternalStore).
+ *
+ * A business account belongs to exactly one organization forever (no switcher), which is
+ * either a BUYER or a VENDOR. Platform admins have no organization. A buyer's "active vendor"
+ * is UI context only (which connected vendor's catalogue is open); it is remembered per buyer
+ * organization and never sent as authorization.
  */
 
 /** Minimal async storage — localStorage on web, SecureStore on native. */
@@ -19,170 +22,211 @@ export interface KeyValueStorage {
 export type SessionState =
   | { status: 'loading' }
   | { status: 'signedOut' }
-  | {
-      status: 'signedIn';
-      session: Session;
-      membership: Membership;
-      /** Buyer memberships only: vendors this buyer org is actively connected to. */
-      connectedVendors: VendorOrg[];
-      /** Buyer memberships only; undefined when the buyer has no connected vendors yet. */
-      activeVendor?: VendorOrg;
-    }
+  | { status: 'business'; account: Account; organization: Organization; activeVendorId: string | null }
+  | { status: 'admin'; account: Account }
   /**
-   * v1.1: the Platform Admin. Belongs to no org, so it's a separate state rather than a
-   * membership — nothing written for vendor/buyer screens can be handed an admin by mistake.
+   * The stored session could not be checked (rate limit, outage, offline). The credential is
+   * kept — only a 401 ends a session — and the app offers `retry()`.
    */
-  | { status: 'admin'; session: Session; admin: PlatformAdmin };
+  | { status: 'unavailable'; error: unknown };
 
-export type SignedInState = Extract<SessionState, { status: 'signedIn' }>;
+export type BusinessState = Extract<SessionState, { status: 'business' }>;
 export type AdminState = Extract<SessionState, { status: 'admin' }>;
 
 export interface SessionStore {
   getState(): SessionState;
   subscribe(listener: () => void): () => void;
-  /** Restore from storage. Call once at app start; safe to call again. */
+  /** Restore from the browser cookie or stored bearer. Call once at app start; safe to repeat. */
   init(): Promise<void>;
-  /** After login / register / invite acceptance. `preferOrgId` picks the membership to open. */
-  signIn(session: Session, preferOrgId?: string): Promise<void>;
-  signOut(): Promise<void>;
-  /** Org switcher: only for users holding more than one membership. */
-  selectMembership(orgId: string): Promise<void>;
-  /** Vendor switcher (buyers): the single action that changes vendor context. */
-  selectVendor(vendorOrgId: string): Promise<void>;
-  /** Re-fetch memberships + vendor connections (e.g. after accepting an invite while signed in). */
+  /** Try the session check again after `unavailable`. */
+  retry(): Promise<void>;
+  /** Password login. Rejects with ApiError (INVALID_LOGIN, RATE_LIMITED, ...). */
+  login(input: { email: string; password: string }): Promise<SessionState>;
+  /** Adopts a SessionResult from another flow (setup completion, external login, reauthentication). */
+  adopt(result: SessionResult): Promise<SessionState>;
+  /** Password reauthentication for guarded actions; rotates credentials and keeps the session. */
+  reauthenticate(password: string): Promise<void>;
+  logout(): Promise<void>;
+  /** Local sign-out after a 401 (session revoked/expired elsewhere). No server call. */
+  expire(): Promise<void>;
+  /** Re-reads /me and /organization (after profile, language or organization edits). */
   refresh(): Promise<void>;
+  /** Replace the cached account/organization from a mutation response without a refetch. */
+  update(patch: { account?: Account; organization?: Organization }): void;
+  selectVendor(vendorId: string | null): Promise<void>;
 }
+
+const RESTORE_ATTEMPTS = 3;
+
+/** Failures worth waiting out: no response, rate limit, temporary unavailability. */
+function isTransient(error: unknown): boolean {
+  return isApiError(error) && (error.status === 0 || error.status === 429 || error.status === 503);
+}
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const KEYS = {
-  token: 'narudzbine.session.token',
-  org: 'narudzbine.session.org',
-  vendor: (buyerOrgId: string) => `narudzbine.session.vendor.${buyerOrgId}`,
+  bearer: 'narudzbine.session.bearer',
+  vendor: (organizationId: string) => `narudzbine.activeVendor.${organizationId}`,
 };
 
-export function membershipKey(m: Membership): string {
-  return m.org.id;
-}
-
-export function createSessionStore(deps: {
-  storage: KeyValueStorage;
-  auth: AppServices['auth'];
-  buyerOrgs: AppServices['buyerOrgs'];
-}): SessionStore {
-  const { storage, auth, buyerOrgs } = deps;
+export function createSessionStore(deps: { storage: KeyValueStorage; deviceLabel: () => string }): SessionStore {
+  const { storage } = deps;
   let state: SessionState = { status: 'loading' };
   const listeners = new Set<() => void>();
   let initPromise: Promise<void> | undefined;
 
   const set = (next: SessionState) => {
     state = next;
-    for (const l of listeners) l();
+    for (const listener of listeners) listener();
   };
+  const native = () => apiConfig().transport === 'NATIVE';
 
-  async function enter(session: Session, preferOrgId?: string | null): Promise<void> {
-    // 02 v1.1 "Admin panel": check for a PlatformAdmin session first, then org memberships.
-    if (session.admin) {
-      await storage.setItem(KEYS.token, session.token);
-      await storage.removeItem(KEYS.org);
-      set({ status: 'admin', session, admin: session.admin });
-      return;
+  async function load(): Promise<SessionState> {
+    const account = await data(api.GET('/me'));
+    if (account.kind === 'PLATFORM_ADMIN' || !account.organizationId) {
+      const next: SessionState = { status: 'admin', account };
+      set(next);
+      return next;
     }
-    const membership =
-      session.memberships.find((m) => membershipKey(m) === preferOrgId) ?? session.memberships[0];
-    if (!membership) {
-      await clear();
-      return;
-    }
-    await storage.setItem(KEYS.token, session.token);
-    await storage.setItem(KEYS.org, membershipKey(membership));
-
-    if (membership.orgType === 'vendor') {
-      set({ status: 'signedIn', session, membership, connectedVendors: [] });
-      return;
-    }
-    const connectedVendors = await buyerOrgs.listConnectedVendors(membership.org.id);
-    const remembered = await storage.getItem(KEYS.vendor(membership.org.id));
-    const activeVendor = connectedVendors.find((v) => v.id === remembered) ?? connectedVendors[0];
-    if (activeVendor) await storage.setItem(KEYS.vendor(membership.org.id), activeVendor.id);
-    set({ status: 'signedIn', session, membership, connectedVendors, activeVendor });
+    const organization = await data(api.GET('/organization'));
+    const activeVendorId = organization.type === 'BUYER' ? await storage.getItem(KEYS.vendor(organization.id)) : null;
+    const next: SessionState = { status: 'business', account, organization, activeVendorId };
+    set(next);
+    return next;
   }
 
-  async function clear(): Promise<void> {
-    await storage.removeItem(KEYS.token);
-    await storage.removeItem(KEYS.org);
+  /** Loads the session, waiting out transient failures (429/503/network) a few times. */
+  async function restore(): Promise<void> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        if (native() && !(await storage.getItem(KEYS.bearer))) return clearLocal();
+        await load();
+        return;
+      } catch (error) {
+        if (isUnauthenticated(error)) return clearLocal();
+        if (!isTransient(error) || attempt >= RESTORE_ATTEMPTS) {
+          if (!isApiError(error)) console.warn('[session] restore failed', error);
+          set({ status: 'unavailable', error });
+          return;
+        }
+        await wait(retryDelayMs(attempt, error));
+      }
+    }
+  }
+
+  async function clearLocal(): Promise<void> {
+    setCsrfToken(null);
+    resetPartnerCache();
+    if (native()) await storage.removeItem(KEYS.bearer);
     set({ status: 'signedOut' });
   }
 
-  function signedIn(): SignedInState {
-    if (state.status !== 'signedIn') throw new Error('Not signed in');
-    return state;
+  async function storeCredentials(result: SessionResult): Promise<void> {
+    resetPartnerCache();
+    if (native()) {
+      if (!result.bearerToken) throw new Error('Native session result without a bearer token.');
+      await storage.setItem(KEYS.bearer, result.bearerToken);
+    } else {
+      setCsrfToken(result.csrfToken);
+    }
   }
 
-  return {
+  const store: SessionStore = {
     getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     init() {
-      initPromise ??= (async () => {
-        try {
-          const token = await storage.getItem(KEYS.token);
-          const session = token ? await auth.restoreSession(token) : null;
-          if (!session) return clear();
-          await enter(session, await storage.getItem(KEYS.org));
-        } catch {
-          // A broken stored token or unreachable backend must not trap the user on a spinner.
-          await clear();
-        }
-      })();
+      initPromise ??= restore();
       return initPromise;
     },
-    signIn: (session, preferOrgId) => enter(session, preferOrgId),
-    async signOut() {
-      const current = state;
-      if (current.status === 'signedIn' || current.status === 'admin') {
-        try {
-          await auth.logout(current.session.token);
-        } catch {
-          // Local sign-out still happens if the server call fails.
-        }
+    async retry() {
+      set({ status: 'loading' });
+      initPromise = restore();
+      return initPromise;
+    },
+    async login({ email, password }) {
+      const deviceLabel = deps.deviceLabel().slice(0, 100);
+      let result: SessionResult;
+      if (native()) {
+        result = await data(api.POST('/auth/login', { body: { email, password, transport: 'NATIVE', deviceLabel } }));
+      } else {
+        // Single-use five-minute nonce bound to an HttpOnly pre-auth cookie; fetch a new one per attempt.
+        const bootstrap = await data(api.GET('/auth/bootstrap'));
+        result = await data(
+          api.POST('/auth/login', {
+            body: { email, password, transport: 'BROWSER', deviceLabel, preAuthNonce: bootstrap.nonce },
+          }),
+        );
       }
-      await clear();
+      return store.adopt(result);
     },
-    selectMembership: (orgId) => enter(signedIn().session, orgId),
-    async selectVendor(vendorOrgId) {
-      const current = signedIn();
-      const vendor = current.connectedVendors.find((v) => v.id === vendorOrgId);
-      if (!vendor || current.membership.orgType !== 'buyer') return;
-      await storage.setItem(KEYS.vendor(current.membership.org.id), vendor.id);
-      set({ ...current, activeVendor: vendor });
+    async adopt(result) {
+      await storeCredentials(result);
+      return load();
     },
+    async reauthenticate(password) {
+      const result = await data(api.POST('/auth/reauthentication', { body: { password } }));
+      await storeCredentials(result);
+    },
+    async logout() {
+      try {
+        await api.POST('/auth/logout', {});
+      } catch {
+        // Local sign-out still happens; the server session expires on its own.
+      }
+      await clearLocal();
+    },
+    expire: () => clearLocal(),
     async refresh() {
-      const current = state;
-      if (current.status !== 'signedIn' && current.status !== 'admin') throw new Error('Not signed in');
-      const session = await auth.restoreSession(current.session.token);
-      if (!session) return clear();
-      await enter(session, current.status === 'signedIn' ? membershipKey(current.membership) : null);
+      try {
+        await load();
+      } catch (error) {
+        if (isUnauthenticated(error)) await clearLocal();
+        else throw error;
+      }
+    },
+    update(patch) {
+      if (state.status === 'business') {
+        set({ ...state, account: patch.account ?? state.account, organization: patch.organization ?? state.organization });
+      } else if (state.status === 'admin' && patch.account) {
+        set({ ...state, account: patch.account });
+      }
+    },
+    async selectVendor(vendorId) {
+      if (state.status !== 'business' || state.organization.type !== 'BUYER') return;
+      const key = KEYS.vendor(state.organization.id);
+      if (vendorId) await storage.setItem(key, vendorId);
+      else await storage.removeItem(key);
+      set({ ...state, activeVendorId: vendorId });
     },
   };
+  return store;
 }
 
-/** The signed-in person's UI language (admin or active membership); undefined when signed out or loading. */
-export function sessionLocale(state: SessionState): AppLocale | undefined {
-  if (state.status === 'admin') return state.admin.preferredLocale;
-  if (state.status === 'signedIn') return state.membership.user.preferredLocale;
+/** Reads the stored native bearer; pass to configureApi({ getBearer }). */
+export function bearerReader(storage: KeyValueStorage): () => Promise<string | null> {
+  return () => storage.getItem(KEYS.bearer);
+}
+
+/** The effective backend locale: the account override, else the organization default, else English. */
+export function effectiveLocale(state: SessionState): Locale | undefined {
+  if (state.status === 'business') return state.account.languageOverride ?? state.organization.defaultLanguage;
+  if (state.status === 'admin') return state.account.languageOverride ?? 'en';
   return undefined;
 }
 
-/**
- * Change the UI language for this person (01 §12: per individual). One login can hold several
- * user records (e.g. a vendor and a buyer membership), so every one of them is updated — the
- * language then doesn't flip when switching org. The caller refreshes the session afterwards.
- */
-export async function saveSessionLocale(deps: Pick<AppServices, 'preferences'>, state: SessionState, locale: AppLocale): Promise<void> {
-  if (state.status === 'admin') return deps.preferences.updateLocale({ userId: state.admin.id, userType: 'admin', locale });
-  if (state.status !== 'signedIn') return;
-  await Promise.all(
-    state.session.memberships.map((m) => deps.preferences.updateLocale({ userId: m.user.id, userType: m.orgType, locale })),
-  );
+export function isVendor(state: SessionState): state is BusinessState {
+  return state.status === 'business' && state.organization.type === 'VENDOR';
+}
+
+export function isBuyer(state: SessionState): state is BusinessState {
+  return state.status === 'business' && state.organization.type === 'BUYER';
+}
+
+/** OWNER and ADMIN manage the organization; STAFF have the fixed staff permissions. */
+export function isOrgAdmin(state: SessionState): boolean {
+  return state.status === 'business' && (state.account.role === 'OWNER' || state.account.role === 'ADMIN');
 }

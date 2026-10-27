@@ -16,7 +16,7 @@
         <java.version>25</java.version>
         <project.build.outputTimestamp>2026-10-16T00:00:00Z</project.build.outputTimestamp>
         <archunit.version>1.4.2</archunit.version>
-        <!-- Explicitly approved security overrides, 2026-10-16; see SECURITY_PATCH_PROPOSAL.md. -->
+        <!-- Explicitly approved security overrides, 2026-10-16; see docs/backend/platform/security-patches.md. -->
         <tomcat.version>11.0.26</tomcat.version>
         <jackson-bom.version>3.1.7</jackson-bom.version>
     </properties>

@@ -1,0 +1,14 @@
+{
+  "loading": "Loading orders…",
+  "loadingOne": "Loading order…",
+  "orderAria": "Order {number}",
+  "replacementFor": "Replacement for order {number}",
+  "items": "{count, plural, one {{countText} line} other {{countText} lines}}",
+  "filters": "Filters",
+  "partner": "Partner",
+  "period": "Period",
+  "reasonPlaceholder": "Write the reason",
+  "confirm": "Confirm",
+  "back": "Back",
+  "messagePlaceholder": "Write a message"
+}

@@ -90,7 +90,7 @@ test('plurals cover the language\'s forms (Serbian: one / few / other)', () => {
 
 test('Serbian plural forms pick the right noun', () => {
   const t = (n: number) =>
-    new IntlMessageFormat(MESSAGES['sr-Latn'].promotions.scopeCount.product, 'sr-Latn').format({ count: n, countText: String(n) });
+    new IntlMessageFormat(MESSAGES['sr-Latn'].vendorCatalogue.total, 'sr-Latn').format({ count: n, countText: String(n) });
   assert.equal(t(1), '1 proizvod');
   assert.equal(t(3), '3 proizvoda');
   assert.equal(t(21), '21 proizvod');
@@ -124,9 +124,8 @@ test('keys named in shared code and apps exist in English', () => {
   const namespaces = new Set(Object.keys(MESSAGES.en));
   const root = resolve(__dirname, '..');
   const found: { file: string; key: string }[] = [];
-  // Core: any quoted dotted literal starting with a namespace ("errors.notFound", LOCATION_COPY, …).
-  // services/real names operations ("catalogue.listProducts"), not messages.
-  for (const file of sources(root).filter((f) => !/[\\/]services[\\/]real[\\/]/.test(f))) {
+  // Core: any quoted dotted literal starting with a namespace ("problems.codes.NOT_FOUND", …).
+  for (const file of sources(root)) {
     for (const m of readFileSync(file, 'utf8').matchAll(/['"]([a-zA-Z]+(?:\.[\w-]+)+)['"]/g)) {
       if (namespaces.has(m[1]!.split('.')[0]!)) found.push({ file, key: m[1]! });
     }
@@ -139,7 +138,8 @@ test('keys named in shared code and apps exist in English', () => {
       }
     }
   }
-  assert.ok(found.length > 100, 'the scan found keys');
+  // Sanity floor only: proves the scan still finds message keys after code moves.
+  assert.ok(found.length > 20, 'the scan found keys');
   const missing = found.filter((f) => !en.has(f.key)).map((f) => `${f.key} (${f.file.slice(root.length - 'packages/core'.length)})`);
   assert.deepEqual(missing, []);
 });

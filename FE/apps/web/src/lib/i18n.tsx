@@ -3,22 +3,24 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { NextIntlClientProvider, useTranslations } from "next-intl";
 import {
+  api,
+  data,
+  effectiveLocale,
   isAppLocale,
-  isServiceError,
   matchLocale,
   MESSAGES,
-  saveSessionLocale,
-  services,
-  sessionLocale,
+  problemMsg,
+  uiLocaleFor,
   type AppLocale,
+  type Locale,
   type Msg,
 } from "@repo/core";
 import { sessionStore, useSession } from "@/lib/session";
 
 /*
- * Web i18n (02 "Internationalization"): next-intl reading the shared key files in
- * @repo/core/i18n. The UI language is the signed-in person's preferredLocale; before login
- * it's a guest choice (the language select on auth pages) or the browser's language.
+ * Web i18n: next-intl reading the shared key files in @repo/core/i18n. Signed in, the UI
+ * language follows the account's language override, else the organization default. Before
+ * login it's a guest choice (the language select on auth pages) or the browser's language.
  * Components never branch on the locale — they call t() / useMsg().
  */
 
@@ -34,7 +36,6 @@ function readGuest(): AppLocale | undefined {
   }
 }
 
-/** Browser guess, used until a guest picks a language or a user signs in (01 §12). */
 function browserLocale(): AppLocale {
   return matchLocale(typeof navigator === "undefined" ? [] : [...(navigator.languages ?? []), navigator.language]);
 }
@@ -63,7 +64,8 @@ function useGuestLocale(): AppLocale {
 export function useUiLocale(): AppLocale {
   const session = useSession();
   const guest = useGuestLocale();
-  return sessionLocale(session) ?? guest;
+  const backend = effectiveLocale(session);
+  return backend ? uiLocaleFor(backend) : guest;
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
@@ -72,40 +74,34 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
   return (
-    // Dates/numbers are formatted by @repo/core (regional LOCALE), not next-intl; timeZone only silences its warning.
-    <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]} timeZone="Europe/Sarajevo">
+    // Dates/numbers are formatted by @repo/core (country region), not next-intl; timeZone only silences its warning.
+    <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]} timeZone="Europe/Belgrade">
       {children}
     </NextIntlClientProvider>
   );
 }
 
-/** Translate a shared-code message descriptor (validation, descriptions, service errors). */
+/** Translate a shared-code message descriptor (validation, problems, descriptions). */
 export function useMsg() {
   const t = useTranslations();
   return useCallback((m: Msg) => (t as unknown as (k: string, v?: Msg["values"]) => string)(m.key, m.values), [t]);
 }
 
-/** Any caught error as text in the UI language: translated service errors, else a generic line. */
+/** Any caught error as text in the UI language: the backend problem code's message, else by status. */
 export function useErrorText() {
   const tm = useMsg();
-  return useCallback(
-    (e: unknown): string => {
-      if (isServiceError(e) && e.msg) return tm(e.msg);
-      if (isServiceError(e, "NOT_IMPLEMENTED")) return tm({ key: "errors.notImplemented", values: { operation: String(e.details?.operation ?? "") } });
-      // [assumed] A real backend's untranslated message is shown as-is rather than hidden.
-      if (e instanceof Error && e.message) return e.message;
-      return tm({ key: "errors.unknown" });
-    },
-    [tm],
-  );
+  return useCallback((e: unknown): string => tm(problemMsg(e)), [tm]);
 }
 
-/** Switch language: saved on every user record of the signed-in person, else remembered for this browser. */
-export async function changeLocale(locale: AppLocale): Promise<void> {
+/**
+ * Save the signed-in person's language override (null = follow the organization default);
+ * guests just remember a UI language in this browser.
+ */
+export async function changeLanguage(next: Locale | null): Promise<void> {
   const state = sessionStore.getState();
-  if (state.status === "signedIn" || state.status === "admin") {
-    await saveSessionLocale(services, state, locale);
-    await sessionStore.refresh();
-  }
-  setGuestLocale(locale);
+  if (state.status !== "business" && state.status !== "admin") return;
+  const account = await data(
+    api.PATCH("/me/language", { body: { expectedRevision: state.account.revision, languageOverride: next } }),
+  );
+  sessionStore.update({ account });
 }

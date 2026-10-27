@@ -1,9 +1,0 @@
-# Local infrastructure tooling — distinct review
-
-Reviewed tracked developer/recovery/release tools after installation, before final frozen acceptance. Reversible synthetic local scope only. Review covered exact local Docker transport (including local-dot npipe and no remote Unix authority), explicit endpoint precedence over inherited contexts, pinned JDK/wrapper, excluded provider/JVM settings, finite commands and no global configuration edits.
-
-The test-only entrypoint lives outside production sources. Review shipping artifact exclusion at final gate. Require canonical run identity, actual loopback bindings, separate worker credentials and unchanged reviewed grants, request-scoped business authority and qualified platform identity without business membership. No bearer/key/export body enters metadata. Four queued jobs are generated asynchronously by the restricted worker and downloaded through the actual requester route; platform downloads remain denied. The runner compares real mappings with the OpenAPI after literal-alternative expansion and verifies fresh run-bound metadata/owned cleanup. Only synthetic fixture login has a fixed documented test password.
-
-Release rehearsal is explicitly limited to current three accepted local baselines. Capability-name presence is not a general proof of release compatibility. Observe actual schema incompatibility refusal and retain the previous image's missing-capability rollback blocker; never invent a registry digest or reverse database migrations. Migrator credentials stay out of ordinary apps; no production action is exposed. Source/data/cardinality/scale targets remain pending load work.
-
-The final full wrapper gate and changed-source/document/provenance checks are required after focused results. Prepared CI changes have not been remotely executed. Full code/tests remain the acceptance evidence; route inventory proves presence only.

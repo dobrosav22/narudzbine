@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRightIcon, ClipboardListIcon, PackageCheckIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRightIcon, ClipboardListIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
-  countMsg,
-  describeDiscount,
-  describeScope,
+  dashboardQueries,
   formatDate,
   formatMoney,
   formatNumber,
-  hasActivity,
-  orderNumber,
-  orderTotal,
-  promotionState,
+  inventoryQueries,
+  localToday,
+  orderStateTone,
+  presetReportRange,
+  reportHasActivity,
+  usageMsg,
 } from "@repo/core";
 import { ErrorState, RowsSkeleton } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
@@ -22,241 +24,215 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { usePromotions } from "@/features/merchandising/queries";
-import { StatusBadge } from "@/features/orders/status-badge";
-import { MonthlyChart } from "@/features/stats/charts";
-import { useVendorSummary } from "@/features/stats/queries";
+import { PeriodChart } from "@/features/stats/charts";
+import { useReportSummary } from "@/features/stats/queries";
 import { StatCard } from "@/features/stats/stat-parts";
-import { useCategories, useVendorOrg } from "@/features/vendor-catalogue/queries";
-import { useVendorOrderContext } from "@/features/vendor-orders/queries";
-import { useTranslations } from "next-intl";
+import { PLAN_SETTINGS_HREF } from "@/features/subscription/plan-limit";
+import { useVendorPlan } from "@/features/subscription/queries";
 import { useMsg } from "@/lib/i18n";
+import { useBusiness } from "@/lib/session";
 
-/** 03 → vendor "Dashboard": recent orders, revenue trend, low-stock alerts if tracking is on. */
-export function DashboardScreen({ vendorOrgId }: { vendorOrgId: string }) {
+/**
+ * Vendor home: delivered sales of the last 30 days (country-local), orders waiting for a
+ * decision, recent orders, plan usage, inventory tracking and running promotions. The backend
+ * has no low-stock list or alert threshold, so no stock alert is shown (see gaps).
+ */
+export function DashboardScreen() {
   const t = useTranslations("dashboard");
-  const router = useRouter();
-  const summary = useVendorSummary(vendorOrgId);
-  const context = useVendorOrderContext(vendorOrgId);
-  const org = useVendorOrg(vendorOrgId);
+  const tm = useMsg();
+  const { organization } = useBusiness();
+  const currency = organization.currency;
+  const range = presetReportRange("30d", localToday());
+  const summary = useReportSummary(range);
+  const awaiting = useQuery(dashboardQueries.awaitingAcceptance());
+  const plan = useVendorPlan();
+  const tracking = useQuery(inventoryQueries.tracking());
+  const promotions = useQuery(dashboardQueries.runningPromotions());
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{org.data?.name ?? " "}</p>
+        <p className="text-sm text-muted-foreground">{organization.displayName}</p>
       </div>
 
       {summary.isError ? (
         <ErrorState error={summary.error} onRetry={() => void summary.refetch()} />
       ) : summary.isPending ? (
-        <DashboardSkeleton />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
       ) : (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label={t("revenue30")} value={formatMoney(summary.data.revenueLast30d)} footer={t("cancelledExcluded")} />
-            <StatCard label={t("orders30")} value={formatNumber(summary.data.ordersLast30d)} footer={t("seeStats")} href="/vendor/stats" />
-            <StatCard label={t("openOrders")} value={formatNumber(summary.data.openOrders)} footer={t("goOrders")} href="/vendor/orders" />
-            <StatCard label={t("activeBuyers")} value={formatNumber(summary.data.activeBuyers)} footer={t("goBuyers")} href="/vendor/buyers" />
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label={t("sales30")} value={formatMoney(summary.data.goodsTotal, currency)} footer={t("deliveredNote")} />
+          <StatCard label={t("orders30")} value={formatNumber(summary.data.orderCount)} footer={t("seeStats")} href="/vendor/stats" />
+          <StatCard
+            label={t("awaiting")}
+            value={awaiting.data ? `${formatNumber(awaiting.data.count)}${awaiting.data.more ? "+" : ""}` : "—"}
+            footer={t("goOrders")}
+            href="/vendor/orders?state=AWAITING_ACCEPTANCE"
+          />
+          <StatCard label={t("activeBuyers")} value={formatNumber(summary.data.activeBuyerCount ?? 0)} footer={t("goBuyers")} href="/vendor/buyers" />
+        </div>
+      )}
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>{t("revenueByMonth")}</CardTitle>
-                <CardDescription>{t("revenueNote")}</CardDescription>
-                <CardAction>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href="/vendor/stats">
-                      {t("stats")}
-                      <ArrowRightIcon data-icon="inline-end" />
-                    </Link>
-                  </Button>
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                {hasActivity(summary.data.revenueByMonth) ? (
-                  <MonthlyChart buckets={summary.data.revenueByMonth} label={t("revenue")} />
-                ) : (
-                  <p className="text-sm text-muted-foreground">{t("noRevenue")}</p>
-                )}
-              </CardContent>
-            </Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>{t("salesByDay")}</CardTitle>
+            <CardDescription>{t("salesNote")}</CardDescription>
+            <CardAction>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/vendor/stats">
+                  {t("stats")}
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Link>
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {summary.isPending ? (
+              <Skeleton className="h-56 w-full" />
+            ) : summary.data && reportHasActivity(summary.data.buckets) ? (
+              <PeriodChart buckets={summary.data.buckets} grouping={summary.data.grouping} currency={currency} label={t("sales")} />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("noSales")}</p>
+            )}
+          </CardContent>
+        </Card>
 
-            <div className="flex flex-col gap-4">
-              {org.data?.tracksInventory && <LowStockCard products={summary.data.lowStockProducts} />}
-              <LivePromotionsCard vendorOrgId={vendorOrgId} />
-            </div>
-          </div>
-
-          <Card>
+        <div className="flex flex-col gap-4">
+          <Card size="sm">
             <CardHeader>
-              <CardTitle>{t("recentOrders")}</CardTitle>
+              <CardTitle>{t("plan")}</CardTitle>
               <CardAction>
                 <Button asChild variant="ghost" size="sm">
-                  <Link href="/vendor/orders">
-                    {t("allOrders")}
-                    <ArrowRightIcon data-icon="inline-end" />
-                  </Link>
+                  <Link href={PLAN_SETTINGS_HREF}>{t("manage")}</Link>
                 </Button>
               </CardAction>
             </CardHeader>
-            <CardContent>
-              {summary.data.recentOrders.length === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <ClipboardListIcon />
-                    </EmptyMedia>
-                    <EmptyTitle>{t("noOrdersTitle")}</EmptyTitle>
-                    <EmptyDescription>{t("noOrdersDescription")}</EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
+            <CardContent className="flex flex-col gap-1 text-sm">
+              {plan.isError ? (
+                <span className="text-muted-foreground">{t("unavailable")}</span>
+              ) : plan.data ? (
+                <>
+                  <span>{tm(usageMsg(plan.data, "products"))}</span>
+                  <span>{tm(usageMsg(plan.data, "buyers"))}</span>
+                </>
               ) : (
-                <Table className="text-sm" aria-label={t("recentOrders")}>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("order")}</TableHead>
-                      <TableHead>{t("buyer")}</TableHead>
-                      <TableHead className="hidden sm:table-cell">{t("placed")}</TableHead>
-                      <TableHead className="text-right">{t("total")}</TableHead>
-                      <TableHead className="text-right">{t("status")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {summary.data.recentOrders.map((o) => (
-                      <TableRow key={o.id} className="cursor-pointer" onClick={() => router.push(`/vendor/orders/${o.id}`)}>
-                        <TableCell>
-                          <Link
-                            href={`/vendor/orders/${o.id}`}
-                            className="font-mono font-medium hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {orderNumber(o)}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{context.data?.buyers.get(o.buyerOrgId)?.name ?? "…"}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{formatDate(o.createdAt)}</TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">{formatMoney(orderTotal(o))}</TableCell>
-                        <TableCell className="text-right">
-                          <StatusBadge config={context.data?.config} statusKey={o.statusKey} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <Skeleton className="h-10 w-full" />
               )}
             </CardContent>
           </Card>
-        </>
-      )}
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle>{t("inventory")}</CardTitle>
+              <CardAction>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/vendor/catalogue/inventory">{t("manage")}</Link>
+                </Button>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              {tracking.data ? (tracking.data.enabled ? t("trackingOn") : t("trackingOff")) : tracking.isError ? t("unavailable") : <Skeleton className="h-5 w-full" />}
+            </CardContent>
+          </Card>
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle>{t("promotions")}</CardTitle>
+              <CardAction>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/vendor/catalogue/promotions">{t("manage")}</Link>
+                </Button>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              {promotions.data !== undefined ? (
+                t("running", { count: promotions.data, countText: formatNumber(promotions.data) })
+              ) : promotions.isError ? (
+                t("unavailable")
+              ) : (
+                <Skeleton className="h-5 w-full" />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <RecentOrders />
     </div>
   );
 }
 
-function LowStockCard({ products }: { products: { id: string; name: string; stock?: number; unit: string }[] }) {
+function RecentOrders() {
   const t = useTranslations("dashboard");
-  const tm = useMsg();
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("lowStock")}</CardTitle>
-        <CardDescription>{products.length ? tm(countMsg("dashboard.runningLow", products.length)) : t("allStocked")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {products.length === 0 ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <PackageCheckIcon />
-            {t("noneLow")}
-          </div>
-        ) : (
-          <ul aria-label={t("lowStockAria")} className="flex flex-col gap-2">
-            {products.slice(0, 6).map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
-                <Link href={`/vendor/catalogue/${p.id}`} className="truncate hover:underline">
-                  {p.name}
-                </Link>
-                <Badge variant={p.stock === 0 ? "destructive" : "warning"}>
-                  {p.stock === 0 ? t("outOfStock") : t("left", { count: formatNumber(p.stock ?? 0) })}
-                </Badge>
-              </li>
-            ))}
-            {products.length > 6 && (
-              <li className="text-sm text-muted-foreground">
-                <Link href="/vendor/catalogue" className="hover:text-foreground hover:underline">
-                  {t("more", { count: formatNumber(products.length - 6) })}
-                </Link>
-              </li>
-            )}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function LivePromotionsCard({ vendorOrgId }: { vendorOrgId: string }) {
-  const t = useTranslations("dashboard");
-  const tm = useMsg();
-  const promotions = usePromotions(vendorOrgId);
-  const categories = useCategories(vendorOrgId);
-  const context = useVendorOrderContext(vendorOrgId);
-  const live = (promotions.data ?? []).filter((p) => promotionState(p) === "live");
-  const upcoming = (promotions.data ?? []).filter((p) => promotionState(p) === "scheduled").length;
-  const names = new Map<string, string>([
-    ...(categories.data ?? []).map((c) => [c.id, c.name] as const),
-    ...[...(context.data?.products.values() ?? [])].map((p) => [p.id, p.name] as const),
-    ...[...(context.data?.buyers.values() ?? [])].map((b) => [b.id, b.name] as const),
-  ]);
+  const ts = useTranslations("ordState");
+  const router = useRouter();
+  const orders = useQuery(dashboardQueries.recentOrders(5));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("promotions")}</CardTitle>
-        <CardDescription>
-          {promotions.data
-            ? `${t("live", { count: formatNumber(live.length) })}${upcoming ? ` · ${t("scheduled", { count: formatNumber(upcoming) })}` : ""}`
-            : " "}
-        </CardDescription>
+        <CardTitle>{t("recentOrders")}</CardTitle>
         <CardAction>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/vendor/catalogue/promotions">{t("manage")}</Link>
+            <Link href="/vendor/orders">
+              {t("allOrders")}
+              <ArrowRightIcon data-icon="inline-end" />
+            </Link>
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
-        {promotions.isError ? (
-          <ErrorState error={promotions.error} onRetry={() => void promotions.refetch()} />
-        ) : promotions.isPending ? (
-          <Skeleton className="h-12 w-full" />
-        ) : live.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noLive")}</p>
+        {orders.isError ? (
+          <ErrorState error={orders.error} onRetry={() => void orders.refetch()} />
+        ) : orders.isPending ? (
+          <RowsSkeleton rows={5} />
+        ) : orders.data.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ClipboardListIcon />
+              </EmptyMedia>
+              <EmptyTitle>{t("noOrdersTitle")}</EmptyTitle>
+              <EmptyDescription>{t("noOrdersDescription")}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
-          <ul aria-label={t("liveAria")} className="flex flex-col gap-2">
-            {live.slice(0, 4).map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
-                <span className="truncate">{tm(describeScope(p, names))}</span>
-                <Badge variant="success">{tm(describeDiscount(p))}</Badge>
-              </li>
-            ))}
-          </ul>
+          <Table className="text-sm" aria-label={t("recentOrders")}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("order")}</TableHead>
+                <TableHead>{t("buyer")}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t("placed")}</TableHead>
+                <TableHead className="text-right">{t("total")}</TableHead>
+                <TableHead className="text-right">{t("status")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orders.data.map((o) => (
+                <TableRow key={o.id} className="cursor-pointer" onClick={() => router.push(`/vendor/orders/${o.id}`)}>
+                  <TableCell>
+                    <Link href={`/vendor/orders/${o.id}`} className="font-mono font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+                      {o.number}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{o.buyer.displayName}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{formatDate(o.submittedAt)}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">{formatMoney(o.goodsTotal, o.currency)}</TableCell>
+                  <TableCell className="text-right">
+                    <Badge variant={orderStateTone(o.state)}>
+                      {o.state === "ACCEPTED" && o.stageName ? ts("withStage", { state: ts(o.state), stage: o.stageName }) : ts(o.state)}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function DashboardSkeleton() {
-  const t = useTranslations("states");
-  return (
-    <div className="flex flex-col gap-4" aria-busy="true" aria-label={t("loading")}>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-24 w-full" />
-        ))}
-      </div>
-      <Skeleton className="h-72 w-full" />
-      <RowsSkeleton rows={5} />
-    </div>
   );
 }

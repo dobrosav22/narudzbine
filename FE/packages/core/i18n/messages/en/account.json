@@ -1,0 +1,137 @@
+{
+  "nav": {
+    "label": "Account sections",
+    "profile": "Profile",
+    "security": "Sign-in & security",
+    "notifications": "Notifications"
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Your teammates see your name. Trading partners see your organization, not you.",
+    "name": "Name",
+    "email": "Login email",
+    "emailHint": "Change it under Sign-in & security.",
+    "home": "Home location",
+    "homeHint": "Preselected where a location is needed (for example delivery). It doesn't limit what you can use.",
+    "noHome": "No home location",
+    "save": "Save profile",
+    "saved": "Profile saved"
+  },
+  "language": {
+    "title": "Language",
+    "description": "The app language for you, and the language of your emails. Product names and messages stay as written.",
+    "label": "Language",
+    "inherit": "Company default ({language})",
+    "saved": "Language saved"
+  },
+  "password": {
+    "title": "Password",
+    "description": "Changing it signs out your other devices. You'll be asked to confirm your current password first.",
+    "submit": "Change password",
+    "changed": "Password changed. Other devices were signed out."
+  },
+  "email": {
+    "title": "Login email",
+    "description": "To change it, both the current and the new address must confirm through emailed links within 24 hours.",
+    "current": "Current address",
+    "new": "New address",
+    "start": "Start change",
+    "pendingTitle": "Change to a new address in progress",
+    "expires": "Links expire {date}",
+    "oldVerified": "Current address confirmed",
+    "oldPending": "Current address not confirmed yet",
+    "newVerified": "New address confirmed",
+    "newPending": "New address not confirmed yet",
+    "refresh": "Check status",
+    "complete": "Finish change",
+    "completeHint": "Both addresses must be confirmed. You'll be signed out everywhere and log in with the new address.",
+    "cancel": "Cancel change",
+    "cancelled": "Email change cancelled",
+    "completedTitle": "Email changed",
+    "completedDescription": "Log in again with your new address.",
+    "states": {
+      "PENDING": "Waiting for confirmations",
+      "RECONCILING": "Being finalized — don't start another change",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired"
+    },
+    "same": "That's already your login email"
+  },
+  "sessions": {
+    "title": "Where you're signed in",
+    "description": "Sign out devices you don't recognize. Signing out everywhere includes this device.",
+    "device": "Device",
+    "lastActive": "Last active",
+    "expires": "Expires",
+    "current": "This device",
+    "revoke": "Sign out",
+    "revoked": "Device signed out",
+    "revokeAll": "Sign out everywhere…",
+    "revokeAllTitle": "Sign out on every device?",
+    "revokeAllDescription": "This includes this browser; you'll need to log in again.",
+    "revokeAllConfirm": "Sign out everywhere"
+  },
+  "external": {
+    "title": "Google and Apple sign-in",
+    "description": "Link an account to log in with it. Linking or unlinking signs out your other devices.",
+    "none": "No linked accounts",
+    "linkedOn": "Linked {date}",
+    "providers": {
+      "GOOGLE": "Google",
+      "APPLE": "Apple"
+    },
+    "unlink": "Unlink",
+    "unlinkTitle": "Unlink {provider}?",
+    "unlinkDescription": "You'll be signed out everywhere and log in with your password or another linked account. Confirm with that other method first.",
+    "unlinked": "{provider} unlinked"
+  },
+  "deactivate": {
+    "title": "Leave the organization",
+    "description": "Deactivates your login in {org}. Your past work stays. Only an owner or admin can reactivate you.",
+    "button": "Deactivate my account…",
+    "confirmTitle": "Deactivate your account?",
+    "confirmDescription": "You'll be signed out everywhere and won't be able to log in until someone reactivates you.",
+    "confirm": "Deactivate",
+    "notStaff": "Owners and admins can't deactivate themselves. An owner must first transfer ownership; an admin needs the owner."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Choose how you hear about each event. These choices are yours alone. Security notices are always sent.",
+    "tableAria": "Notification preferences",
+    "event": "Event",
+    "switchAria": "{event}: {channel}",
+    "saveFailed": "Couldn't save that setting",
+    "deliveryNote": "Email and push delivery depend on the service being enabled for your company's region."
+  },
+  "devices": {
+    "title": "Devices for push notifications",
+    "description": "Phones and browsers registered to receive push notifications. Signing out of a device stops its notifications.",
+    "none": "No devices registered",
+    "platforms": {
+      "WEB": "Web browser",
+      "ANDROID": "Android",
+      "IOS": "iPhone / iPad"
+    },
+    "enabled": "Receiving",
+    "disabled": "Not receiving",
+    "registered": "Registered {date}",
+    "remove": "Remove",
+    "removed": "Device removed",
+    "webUnavailable": "Push notifications in the browser aren't available yet.",
+    "mobileUnavailable": "Registering this phone for push notifications isn't available yet."
+  },
+  "inbox": {
+    "title": "Inbox",
+    "description": "Activity on your orders and partners from the last 90 days.",
+    "filter": "Show",
+    "all": "All",
+    "unread": "Unread",
+    "empty": "Nothing here",
+    "emptyUnread": "You're all caught up",
+    "markRead": "Mark as read",
+    "openOrder": "Open order",
+    "unreadLabel": "Unread",
+    "loadMore": "Load more"
+  }
+}

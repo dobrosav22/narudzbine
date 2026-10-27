@@ -1,60 +1,33 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { services, type PromotionFields } from "@repo/core";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  archivePromotion,
+  createPromotion,
+  promotionKeys,
+  promotionQueries,
+  stopPromotion,
+  updatePromotion,
+  type PromotionInput,
+  type PromotionListQuery,
+  type PromotionUpdate,
+} from "@repo/core";
 
-export const merchKeys = {
-  featured: (vendorOrgId: string) => ["featured", vendorOrgId] as const,
-  promotions: (vendorOrgId: string) => ["promotions", vendorOrgId] as const,
-};
+export function usePromotions(q: PromotionListQuery) {
+  return useQuery({ ...promotionQueries.list(q), placeholderData: keepPreviousData });
+}
 
-/**
- * Featured order and promotions both change what buyers see (the home shelf, every
- * resolved price), so each write also refreshes the buyer catalogue for this vendor.
- */
-function useInvalidateBuyerSide(vendorOrgId: string) {
+/** Create/update/stop/archive; each refreshes every promotion list. */
+export function usePromotionMutations() {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: ["buyerCatalogue", vendorOrgId] });
-}
-
-export function useFeatured(vendorOrgId: string) {
-  return useQuery({ queryKey: merchKeys.featured(vendorOrgId), queryFn: () => services.merchandising.listFeatured(vendorOrgId) });
-}
-
-export function useSetFeatured(vendorOrgId: string) {
-  const qc = useQueryClient();
-  const invalidateBuyers = useInvalidateBuyerSide(vendorOrgId);
-  return useMutation({
-    mutationFn: (productIds: string[]) => services.merchandising.setFeatured(vendorOrgId, productIds),
-    onSuccess: (featured) => {
-      qc.setQueryData(merchKeys.featured(vendorOrgId), featured);
-      return invalidateBuyers();
-    },
-  });
-}
-
-export function usePromotions(vendorOrgId: string) {
-  return useQuery({ queryKey: merchKeys.promotions(vendorOrgId), queryFn: () => services.merchandising.listPromotions(vendorOrgId) });
-}
-
-/** Create when `promotionId` is absent, otherwise patch. */
-export function useSavePromotion(vendorOrgId: string) {
-  const qc = useQueryClient();
-  const invalidateBuyers = useInvalidateBuyerSide(vendorOrgId);
-  return useMutation({
-    mutationFn: ({ promotionId, fields }: { promotionId?: string; fields: Partial<PromotionFields> }) =>
-      promotionId
-        ? services.merchandising.updatePromotion(promotionId, fields)
-        : services.merchandising.createPromotion({ vendorOrgId, ...(fields as PromotionFields) }),
-    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: merchKeys.promotions(vendorOrgId) }), invalidateBuyers()]),
-  });
-}
-
-export function useDeletePromotion(vendorOrgId: string) {
-  const qc = useQueryClient();
-  const invalidateBuyers = useInvalidateBuyerSide(vendorOrgId);
-  return useMutation({
-    mutationFn: (promotionId: string) => services.merchandising.deletePromotion(promotionId),
-    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: merchKeys.promotions(vendorOrgId) }), invalidateBuyers()]),
-  });
+  const refresh = () => qc.invalidateQueries({ queryKey: promotionKeys.all });
+  return {
+    create: useMutation({ mutationFn: (body: PromotionInput) => createPromotion(body), onSuccess: refresh }),
+    update: useMutation({ mutationFn: ({ id, body }: { id: string; body: PromotionUpdate }) => updatePromotion(id, body), onSuccess: refresh }),
+    stop: useMutation({ mutationFn: ({ id, expectedRevision }: { id: string; expectedRevision: string }) => stopPromotion(id, expectedRevision), onSuccess: refresh }),
+    archive: useMutation({
+      mutationFn: ({ id, expectedRevision }: { id: string; expectedRevision: string }) => archivePromotion(id, expectedRevision),
+      onSuccess: refresh,
+    }),
+  };
 }

@@ -1,46 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import Link from "next/link";
-import { ArrowDownIcon, ArrowUpIcon, SparklesIcon, XIcon } from "lucide-react";
+import { SearchIcon, SparklesIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
-import { FEATURED_SUGGESTED_MAX, formatMoney, formatNumber, moveItem, type Product } from "@repo/core";
+import { useTranslations } from "next-intl";
+import { formatNumber, type Product } from "@repo/core";
 import { EmptyState, ErrorState, RowsSkeleton } from "@/components/query-states";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
-import { FormError } from "@/features/auth/form-error";
-import { useVendorProducts } from "@/features/vendor-catalogue/queries";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { ProductStateBadge, ProductThumb, useCatalogueErrorText } from "@/features/vendor-catalogue/parts";
+import { useAllProducts, useProducts, useSetFeatured } from "@/features/vendor-catalogue/queries";
 import { CatalogueNav } from "./catalogue-nav";
-import { useFeatured, useSetFeatured } from "./queries";
-import { useTranslations } from "next-intl";
 
 /**
- * 03 → "Featured & Promotions", featured half: the manually ordered list buyers see
- * as the first shelf on their home screen (01 §4). Edits are a local draft saved in
- * one call — setFeatured replaces the whole list, so quick reorders can't race.
+ * Featured products: a per-product flag (PUT …/featured with the product revision). The vendor
+ * product list has no featured filter, so the featured set is read from all products.
  */
-export function FeaturedScreen({ vendorOrgId }: { vendorOrgId: string }) {
+export function FeaturedScreen() {
   const t = useTranslations("merch.featured");
-  const tc = useTranslations("common");
-  const featured = useFeatured(vendorOrgId);
-  const products = useVendorProducts({ vendorOrgId, search: "", tagIds: [] });
-  const save = useSetFeatured(vendorOrgId);
-  const [draft, setDraft] = useState<string[] | null>(null);
-
-  const saved = featured.data?.map((f) => f.productId) ?? [];
-  const ids = draft ?? saved;
-  const dirty = draft !== null && draft.join() !== saved.join();
-  const byId = new Map((products.data ?? []).map((p) => [p.id, p]));
-  const addable = (products.data ?? []).filter((p) => p.isActive && !ids.includes(p.id));
-
-  const edit = (next: string[]) => {
-    if (save.error) save.reset();
-    setDraft(next);
-  };
+  const all = useAllProducts();
+  const featured = (all.data ?? []).filter((p) => p.featured);
 
   return (
     <div className="flex flex-col gap-4">
@@ -49,147 +31,128 @@ export function FeaturedScreen({ vendorOrgId }: { vendorOrgId: string }) {
         <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
       <CatalogueNav />
-
-      {featured.isError || products.isError ? (
-        <ErrorState
-          error={featured.error ?? products.error}
-          onRetry={() => void Promise.all([featured.refetch(), products.refetch()])}
-        />
-      ) : featured.isPending || products.isPending ? (
-        <RowsSkeleton rows={5} />
-      ) : (
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>{t("title")}</CardTitle>
-            <CardDescription>
-              {ids.length ? t("count", { count: formatNumber(ids.length) }) : t("none")}
-            </CardDescription>
-            <CardAction>
-              <Select
-                value=""
-                onValueChange={(id) => edit([...ids, id])}
-                disabled={addable.length === 0}
-              >
-                <SelectTrigger className="w-56" aria-label={t("addAria")}>
-                  <SelectValue placeholder={addable.length ? t("addPlaceholder") : t("allFeatured")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {addable.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </CardAction>
+            <CardTitle>{t("count", { count: featured.length, countText: formatNumber(featured.length) })}</CardTitle>
+            <CardDescription>{t("orderNote")}</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {ids.length === 0 ? (
-              <EmptyState
-                icon={SparklesIcon}
-                title={t("emptyTitle")}
-                description={t("emptyDescription")}
-              />
+          <CardContent>
+            {all.isError ? (
+              <ErrorState error={all.error} onRetry={() => void all.refetch()} />
+            ) : all.isPending ? (
+              <RowsSkeleton rows={4} />
+            ) : featured.length === 0 ? (
+              <EmptyState icon={SparklesIcon} title={t("emptyTitle")} description={t("emptyDescription")} />
             ) : (
-              <ol aria-label={t("listAria")} className="flex flex-col divide-y rounded-lg border">
-                {ids.map((id, i) => (
-                  <FeaturedRow
-                    key={id}
-                    position={i + 1}
-                    product={byId.get(id)}
-                    isFirst={i === 0}
-                    isLast={i === ids.length - 1}
-                    onMove={(delta) => edit(moveItem(ids, i, delta))}
-                    onRemove={() => edit(ids.filter((x) => x !== id))}
-                  />
+              <ul className="flex flex-col divide-y rounded-lg border">
+                {featured.map((p) => (
+                  <FeaturedRow key={p.id} product={p} />
                 ))}
-              </ol>
+              </ul>
             )}
-
-            {ids.length > FEATURED_SUGGESTED_MAX && (
-              <Alert>
-                <SparklesIcon />
-                <AlertTitle>{t("longTitle")}</AlertTitle>
-                <AlertDescription>{t("longDescription", { count: formatNumber(FEATURED_SUGGESTED_MAX) })}</AlertDescription>
-              </Alert>
-            )}
-            {save.error && <FormError error={save.error} />}
-
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {dirty && <span className="mr-auto text-sm text-muted-foreground">{t("unsaved")}</span>}
-              <Button variant="outline" disabled={!dirty || save.isPending} onClick={() => setDraft(null)}>
-                {tc("discard")}
-              </Button>
-              <Button
-                disabled={!dirty || save.isPending}
-                onClick={() =>
-                  save.mutate(ids, {
-                    onSuccess: () => {
-                      setDraft(null);
-                      toast.success(t("saved"));
-                    },
-                  })
-                }
-              >
-                {save.isPending && <Spinner data-icon="inline-start" />}
-                {t("save")}
-              </Button>
-            </div>
           </CardContent>
         </Card>
-      )}
+        <FeatureSearch />
+      </div>
     </div>
   );
 }
 
-function FeaturedRow({
-  position,
-  product,
-  isFirst,
-  isLast,
-  onMove,
-  onRemove,
-}: {
-  position: number;
-  product: Product | undefined;
-  isFirst: boolean;
-  isLast: boolean;
-  onMove: (delta: -1 | 1) => void;
-  onRemove: () => void;
-}) {
+function FeaturedRow({ product }: { product: Product }) {
   const t = useTranslations("merch.featured");
-  const name = product?.name ?? t("deletedProduct");
+  const errorText = useCatalogueErrorText();
+  const setFeatured = useSetFeatured();
   return (
     <li className="flex items-center gap-3 px-3 py-2">
-      <span className="w-6 text-right font-mono text-sm text-muted-foreground tabular-nums">{position}</span>
+      <ProductThumb assetId={product.galleryAssetIds[0]} className="size-10" />
       <div className="flex min-w-0 flex-1 flex-col">
-        {product ? (
-          <Link href={`/vendor/catalogue/${product.id}`} className="truncate font-medium hover:underline">
-            {name}
-          </Link>
-        ) : (
-          <span className="font-medium">{name}</span>
-        )}
+        <Link href={`/vendor/catalogue/${product.id}`} className="truncate font-medium hover:underline">
+          {product.name}
+        </Link>
         <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          {product && <span className="font-mono">{product.sku}</span>}
-          {product && <span className="font-mono tabular-nums">{formatMoney(product.basePrice)}</span>}
-          {/* Buyers only ever see active products, so an inactive one silently drops off the shelf. */}
-          {(!product || !product.isActive) && <Badge variant="warning">{t("hidden")}</Badge>}
+          <span className="font-mono">{product.sku}</span>
+          {product.state !== "ACTIVE" && <Badge variant="warning">{t("hidden")}</Badge>}
         </span>
       </div>
-      <div className="flex gap-1">
-        <Button variant="ghost" size="icon-sm" aria-label={t("moveUp", { name })} disabled={isFirst} onClick={() => onMove(-1)}>
-          <ArrowUpIcon />
-        </Button>
-        <Button variant="ghost" size="icon-sm" aria-label={t("moveDown", { name })} disabled={isLast} onClick={() => onMove(1)}>
-          <ArrowDownIcon />
-        </Button>
-        <Button variant="ghost" size="icon-sm" aria-label={t("remove", { name })} onClick={onRemove}>
-          <XIcon />
-        </Button>
-      </div>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={t("unfeatureAria", { name: product.name })}
+        disabled={setFeatured.isPending}
+        onClick={() =>
+          setFeatured.mutate(
+            { product, featured: false },
+            { onSuccess: () => toast.success(t("featuredOff", { name: product.name })), onError: (e) => toast.error(errorText(e)) },
+          )
+        }
+      >
+        <XIcon />
+      </Button>
     </li>
+  );
+}
+
+function FeatureSearch() {
+  const t = useTranslations("merch.featured");
+  const errorText = useCatalogueErrorText();
+  const [search, setSearch] = useState("");
+  const q = useDeferredValue(search.trim());
+  const results = useProducts({ page: 0, size: 10, ...(q ? { q } : {}) });
+  const setFeatured = useSetFeatured();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("addTitle")}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <InputGroup>
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput value={search} maxLength={100} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchAria")} />
+        </InputGroup>
+        {results.isError ? (
+          <ErrorState error={results.error} onRetry={() => void results.refetch()} />
+        ) : results.isPending ? (
+          <RowsSkeleton rows={4} />
+        ) : results.data.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("noResults")}</p>
+        ) : (
+          <ul className="flex flex-col divide-y rounded-lg border">
+            {results.data.items.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 px-3 py-2">
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate font-medium">{p.name}</span>
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="font-mono">{p.sku}</span>
+                    <ProductStateBadge state={p.state} />
+                  </span>
+                </div>
+                {p.featured ? (
+                  <Badge variant="info">{t("alreadyFeatured")}</Badge>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={t("featureAria", { name: p.name })}
+                    disabled={setFeatured.isPending}
+                    onClick={() =>
+                      setFeatured.mutate(
+                        { product: p, featured: true },
+                        { onSuccess: () => toast.success(t("featuredOn", { name: p.name })), onError: (e) => toast.error(errorText(e)) },
+                      )
+                    }
+                  >
+                    {t("feature")}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }

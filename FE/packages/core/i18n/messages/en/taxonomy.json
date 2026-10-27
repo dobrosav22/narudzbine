@@ -1,0 +1,43 @@
+{
+  "title": "Categories, tags & units",
+  "description": "Buyers filter your catalogue by categories and tags. Units appear on every order line.",
+  "renameAria": "Rename {name}",
+  "deleteAria": "Delete {name}",
+  "nameRequired": "Enter a name.",
+  "tooLong": "Use at most {max} characters.",
+  "frozen": "Ordered — name fixed",
+  "frozenHint": "This unit has been ordered, so its name can't change.",
+  "inUse": "“{name}” is still used by products or promotions. Remove it there first.",
+  "kind": {
+    "categories": {
+      "title": "Categories",
+      "empty": "No categories yet.",
+      "new": "New category",
+      "added": "Added category “{name}”",
+      "renamed": "Category renamed to “{name}”",
+      "deleted": "Deleted category “{name}”",
+      "deleteTitle": "Delete category “{name}”?",
+      "deleteNote": "Only unused categories can be deleted. The name becomes free to use again."
+    },
+    "tags": {
+      "title": "Tags",
+      "empty": "No tags yet.",
+      "new": "New tag",
+      "added": "Added tag “{name}”",
+      "renamed": "Tag renamed to “{name}”",
+      "deleted": "Deleted tag “{name}”",
+      "deleteTitle": "Delete tag “{name}”?",
+      "deleteNote": "Only unused tags can be deleted. The name becomes free to use again."
+    },
+    "units": {
+      "title": "Units",
+      "empty": "No units yet. Products need a unit before they can be activated.",
+      "new": "New unit (e.g. kg, case)",
+      "added": "Added unit “{name}”",
+      "renamed": "Unit renamed to “{name}”",
+      "deleted": "Deleted unit “{name}”",
+      "deleteTitle": "Delete unit “{name}”?",
+      "deleteNote": "Only units no product uses can be deleted."
+    }
+  }
+}

@@ -3103,6 +3103,23 @@ class AuthHttpIT {
         assertThat(cors.statusCode()).isEqualTo(200);assertThat(cors.headers().firstValue("Access-Control-Allow-Origin")).contains("https://app.example");
         assertProblem(send("GET","/locales",null,"Origin","https://evil.example"),403,"CSRF_REJECTED");
     }
+    @Test void everyBrowserRouteAnswersAllowedOriginPreflight() throws Exception {
+        var missing=new java.util.TreeSet<String>();int checked=0;
+        for(var mapping:app.getBeansOfType(org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping.class).values())
+            for(var route:mapping.getHandlerMethods().keySet())
+                for(String pattern:route.getPatternValues()){
+                    if(!pattern.startsWith("/api/v1/")||pattern.startsWith("/api/v1/provider-callbacks/")||pattern.startsWith("/api/v1/auth/external/{"))continue;
+                    // Constrained variables take their first alternative; request() maps unprefixed paths under /auth.
+                    String path=pattern.substring("/api/v1".length()).replaceAll("\\{[^}:]+:([A-Za-z0-9_-]+)(?:\\|[^}]*)?\\}","$1").replaceAll("\\{[^}]+\\}","01a16edc-2237-7b29-833d-e7d033343ec6");
+                    if(path.startsWith("/auth/"))path=path.substring("/auth".length());
+                    for(var method:route.getMethodsCondition().getMethods()){
+                        var preflight=send("OPTIONS",path,null,"Origin","https://app.example","Access-Control-Request-Method",method.name(),"Access-Control-Request-Headers","Content-Type,X-CSRF-Token");checked++;
+                        if(preflight.statusCode()!=200||!preflight.headers().firstValue("Access-Control-Allow-Origin").orElse("").equals("https://app.example"))missing.add(method.name()+" "+pattern);
+                    }
+                }
+        assertThat(checked).isGreaterThan(200);
+        assertThat(missing).as("Browser routes without CORS for the allowed origin").isEmpty();
+    }
     @Test void localeRosterIsImmutableAndExtensibleWithoutMapOrdering() {
         var source=new java.util.ArrayList<>(java.util.List.of("fr-FR","en","bs-Latn-BA","sr-Latn-RS"));
         var locales=new com.narudzbine.identity.application.SupportedLocales(source);source.clear();
@@ -7028,6 +7045,14 @@ class AuthHttpIT {
         private record PendingExport(String token,String path,String orderId) {
             @Override public String toString(){return "PendingExport[redacted]";}
         }
+        /** Serve window: default one hour; LOCAL_SYNTHETIC_SERVE_SECONDS may extend it to at most eight hours. */
+        static long serveSeconds() {
+            String configured=System.getenv("LOCAL_SYNTHETIC_SERVE_SECONDS");
+            if(configured==null||configured.isBlank())return 3600;
+            long seconds=Long.parseLong(configured.strip());
+            if(seconds<60||seconds>28800)throw new IllegalArgumentException("LOCAL_SYNTHETIC_SERVE_SECONDS must be 60..28800");
+            return seconds;
+        }
         public static void main(String[] args) throws Exception {
             if (args.length != 1 || !java.util.Set.of("--check", "--serve").contains(args[0])
                     || !"true".equals(System.getenv("LOCAL_SYNTHETIC_ACKNOWLEDGED"))
@@ -7068,6 +7093,20 @@ class AuthHttpIT {
                 var properties=new java.util.ArrayList<String>(java.util.Arrays.asList(app.getBean(org.springframework.boot.ApplicationArguments.class).getSourceArgs()));
                 properties.addAll(java.util.List.of("--privacy.exports.enabled=true","--privacy.exports.worker-enabled=true","--privacy.exports.artifact-key="+key(),
                         "--privacy.exports.jdbc-url="+DATABASE.getJdbcUrl(),"--privacy.exports.username=development_portable_worker","--privacy.exports.password="+portablePassword));
+                // Optional frontend-development inputs (loopback only): extra exact https browser origins
+                // validated by SessionTransportPolicy, and a fixed loopback API port for the web proxy.
+                String origins=System.getenv("LOCAL_SYNTHETIC_BROWSER_ORIGINS");
+                if(origins!=null&&!origins.isBlank()){
+                    properties.removeIf(p->p.startsWith("--identity.http.origins="));
+                    properties.add("--identity.http.origins=https://app.example,"+origins.strip());
+                }
+                String apiPort=System.getenv("LOCAL_SYNTHETIC_API_PORT");
+                if(apiPort!=null&&!apiPort.isBlank()){
+                    int fixed=Integer.parseInt(apiPort.strip());
+                    if(fixed<1024||fixed>65535)throw new IllegalArgumentException("LOCAL_SYNTHETIC_API_PORT must be 1024..65535");
+                    properties.removeIf(p->p.startsWith("--server.port="));
+                    properties.add("--server.port="+fixed);
+                }
                 app.close();
                 app=new SpringApplication(BackendApplication.class,Fixture.class).run(properties.toArray(String[]::new));
                 port=((WebServerApplicationContext)app).getWebServer().getPort();
@@ -7127,7 +7166,7 @@ class AuthHttpIT {
                 var evidence = new java.util.LinkedHashMap<String,Object>(Map.of("syntheticOnly", true, "schema", 78,
                         "baseUrl", "http://127.0.0.1:" + port + "/api/v1", "privateManagementUrl", "http://127.0.0.1:" + management,
                         "countryIsolationVerified", true, "externalDeliveryEnabled", false, "providerConformanceClaim", false,
-                        "fixtures", scenarios, "mode", args[0], "maximumServeSeconds", 3600));
+                        "fixtures", scenarios, "mode", args[0], "maximumServeSeconds", serveSeconds()));
                 evidence.put("portableJsonWorkerEnabled",true);
                 evidence.put("runId",runId);
                 evidence.put("portableJsonDownloadsVerified",pending.size());
@@ -7141,7 +7180,7 @@ class AuthHttpIT {
                 java.nio.file.Files.writeString(java.nio.file.Path.of("target/local-development-"+runId+".json"),JSON.writeValueAsString(recorded));
                 evidence.put("registeredMappingPatterns",routes.size());
                 System.out.println("SYNTHETIC_DEVELOPMENT_READY " + JSON.writeValueAsString(evidence));
-                if (args[0].equals("--serve")) java.util.concurrent.TimeUnit.SECONDS.sleep(3600);
+                if (args[0].equals("--serve")) java.util.concurrent.TimeUnit.SECONDS.sleep(serveSeconds());
             } finally {
                 close.run();
                 Runtime.getRuntime().removeShutdownHook(hook);

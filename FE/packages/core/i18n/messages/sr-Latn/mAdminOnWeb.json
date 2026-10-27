@@ -1,0 +1,5 @@
+{
+  "hi": "Zdravo, {name}",
+  "body": "Administratorski panel postoji samo u veb aplikaciji. Otvorite Narudžbine u pregledaču da biste upravljali dobavljačima i kupcima.",
+  "logOut": "Odjavi se"
+}

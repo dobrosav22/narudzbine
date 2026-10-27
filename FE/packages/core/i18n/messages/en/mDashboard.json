@@ -1,0 +1,7 @@
+{
+  "loading": "Loading dashboard…",
+  "sales30": "Sales · 30 days",
+  "orders30": "Orders · 30 days",
+  "noOrders": "Orders from your buyers show up here.",
+  "orderAria": "Order {number}"
+}

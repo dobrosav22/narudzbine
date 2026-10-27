@@ -1,46 +1,30 @@
-import { useQuery } from '@tanstack/react-query';
-import { services, type StatsFilter } from '@repo/core';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { reportKeys, reportQueries, type ReportRange, type ReportSummaryRange } from '@repo/core';
 
-/**
- * Same keys as web: stats sit under the order keys (['orders', vendorOrgId, …] and
- * ['orders', vendorOrgId, buyerOrgId, …]), so placing an order or changing its status —
- * which already invalidates those prefixes — refreshes every stat derived from them.
- */
-export const statsKeys = {
-  vendorSummary: (vendorOrgId: string) => ['orders', vendorOrgId, 'stats', 'summary'] as const,
-  byProduct: (vendorOrgId: string, filter: StatsFilter) => ['orders', vendorOrgId, 'stats', 'byProduct', filter] as const,
-  byBuyer: (vendorOrgId: string, filter: StatsFilter) => ['orders', vendorOrgId, 'stats', 'byBuyer', filter] as const,
-  buyerSummary: (vendorOrgId: string, buyerOrgId: string, filter: StatsFilter) =>
-    ['orders', vendorOrgId, buyerOrgId, 'stats', filter] as const,
-};
+const PAGE = 25;
 
-export function useVendorSummary(vendorOrgId: string) {
-  return useQuery({ queryKey: statsKeys.vendorSummary(vendorOrgId), queryFn: () => services.stats.getVendorSummary(vendorOrgId) });
+export function useReportSummary(range: ReportSummaryRange) {
+  return useQuery({ ...reportQueries.summary(range), placeholderData: keepPreviousData });
 }
 
-export function useProductStats(vendorOrgId: string, filter: StatsFilter, enabled = true) {
-  return useQuery({
-    queryKey: statsKeys.byProduct(vendorOrgId, filter),
-    queryFn: () => services.stats.byProduct(vendorOrgId, filter),
-    placeholderData: (prev) => prev,
+/** Product report as an endless list (offset pages). */
+export function useProductReportPages(range: ReportRange, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: [...reportKeys.products({ ...range, page: -1 }), 'infinite'] as const,
+    queryFn: ({ pageParam }) => reportQueries.products({ ...range, page: pageParam, size: PAGE }).queryFn(),
+    initialPageParam: 0,
+    getNextPageParam: (last, _all, lastPage) => (last.items.length === PAGE ? lastPage + 1 : undefined),
     enabled,
   });
 }
 
-export function useBuyerStats(vendorOrgId: string, filter: StatsFilter, enabled = true) {
-  return useQuery({
-    queryKey: statsKeys.byBuyer(vendorOrgId, filter),
-    queryFn: () => services.stats.byBuyer(vendorOrgId, filter),
-    placeholderData: (prev) => prev,
+/** Vendor organizations only. */
+export function useBuyerReportPages(range: ReportRange, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: [...reportKeys.buyers({ ...range, page: -1 }), 'infinite'] as const,
+    queryFn: ({ pageParam }) => reportQueries.buyers({ ...range, page: pageParam, size: PAGE }).queryFn(),
+    initialPageParam: 0,
+    getNextPageParam: (last, _all, lastPage) => (last.items.length === PAGE ? lastPage + 1 : undefined),
     enabled,
-  });
-}
-
-export function useBuyerSummary(scope: { vendorOrgId: string; buyerOrgId: string } | undefined, filter: StatsFilter) {
-  return useQuery({
-    queryKey: statsKeys.buyerSummary(scope?.vendorOrgId ?? '', scope?.buyerOrgId ?? '', filter),
-    queryFn: () => services.stats.getBuyerSummary(scope!.buyerOrgId, scope!.vendorOrgId, filter),
-    enabled: !!scope,
-    placeholderData: (prev) => prev,
   });
 }

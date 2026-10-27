@@ -2,7 +2,7 @@
   "name": "@repo/core",
   "version": "0.0.0",
   "private": true,
-  "description": "Shared, platform-agnostic types, service layer, mocks and pricing logic. Consumed as TypeScript source by apps/web and apps/mobile.",
+  "description": "Shared, platform-agnostic frontend core: typed backend API client (generated from openapi.yaml), session store, formatting, i18n and query factories. Consumed as TypeScript source by apps/web and apps/mobile.",
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
@@ -10,15 +10,18 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test pricing/resolvePrice.test.ts mocks/mocks.test.ts helpers.test.ts session/store.test.ts catalogue/productForm.test.ts catalogue/buyerCatalogue.test.ts cart/store.test.ts cart/checkout.test.ts orders/vendorOrders.test.ts merchandising/promotions.test.ts org/admin.test.ts catalogue/productImage.test.ts subscription/plan.test.ts i18n/messages.test.ts",
-    "verify:real-stubs": "tsx scripts/verify-real-stubs.ts"
+    "test": "tsx --test \"**/*.test.ts\"",
+    "gen:api": "node scripts/generate-api.mjs",
+    "i18n:index": "node scripts/i18n-index.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
+    "openapi-typescript": "7.13.0",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3"
   },
   "dependencies": {
-    "intl-messageformat": "^12.1.2"
+    "intl-messageformat": "^12.1.2",
+    "openapi-fetch": "0.17.0"
   }
 }

@@ -219,6 +219,17 @@ public class AuthHttpConfiguration {
         source.registerCorsConfiguration("/api/v1/organization/members/**", cors);
         source.registerCorsConfiguration("/api/v1/organization/ownership-transfers/**", cors);
         source.registerCorsConfiguration("/api/v1/me/language", cors);
+        // Browser routes added after the per-increment registrations above (D-GOV-007 web integration):
+        // without them a same-site web origin cannot call notifications, devices, reporting, exports,
+        // closure, audit, administration directory/support or recovery routes.
+        for (String pattern : List.of("/api/v1/me/notification-preferences", "/api/v1/me/notifications",
+                "/api/v1/me/notifications/**", "/api/v1/me/devices", "/api/v1/me/devices/**",
+                "/api/v1/organization/closure", "/api/v1/organization/audit", "/api/v1/reports/**", "/api/v1/exports",
+                "/api/v1/exports/**", "/api/v1/admin/organizations", "/api/v1/admin/organizations/**", "/api/v1/admin/summary",
+                "/api/v1/admin/support-access", "/api/v1/admin/support/**", "/api/v1/admin/audit",
+                "/api/v1/admin/recovery-cases", "/api/v1/admin/recovery-cases/**", "/api/v1/recovery-cases/**")) {
+            source.registerCorsConfiguration(pattern, cors);
+        }
         var filter = new CorsFilter(source) {
             @Override protected boolean shouldNotFilter(jakarta.servlet.http.HttpServletRequest request) {
                 // OAuth callbacks have their own one-use state/browser-binding boundary, including cross-site Apple POST.

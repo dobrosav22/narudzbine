@@ -1,0 +1,21 @@
+{
+  "mainNavigation": "Main navigation",
+  "dashboard": "Dashboard",
+  "catalogue": "Catalogue",
+  "orders": "Orders",
+  "buyers": "Buyers",
+  "stats": "Stats",
+  "notifications": "Inbox",
+  "team": "Team",
+  "locations": "Locations",
+  "settings": "Settings",
+  "browse": "Browse",
+  "cart": "Cart",
+  "drafts": "Drafts",
+  "favorites": "Favorites",
+  "vendors": "Vendors",
+  "organizations": "Organizations",
+  "planRequests": "Plan requests",
+  "audit": "Audit log",
+  "account": "Account"
+}

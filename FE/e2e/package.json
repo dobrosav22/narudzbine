@@ -2,10 +2,13 @@
   "name": "e2e",
   "private": true,
   "type": "module",
-  "description": "Browser flow tests (puppeteer-core + an installed Chrome; no browser download). Run against a production build with mocks ON.",
+  "description": "Browser checks of both apps against the local synthetic backend (puppeteer-core + an installed Chrome; no browser download). See README.md.",
   "scripts": {
-    "web": "node web.mjs",
-    "mobile": "node mobile.mjs"
+    "seed": "node seed.mjs",
+    "screens": "node screens.mjs",
+    "flows": "node flows.mjs",
+    "mobile": "node mobile-screens.mjs",
+    "transport": "node browser-transport-check.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^25.12.0"

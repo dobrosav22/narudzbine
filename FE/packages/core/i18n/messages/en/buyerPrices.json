@@ -1,0 +1,19 @@
+{
+  "title": "Agreed buyer prices",
+  "description": "A net unit price agreed with one buyer replaces the base price and volume tiers for that buyer. A promotion can still lower it.",
+  "empty": "You have no connected buyers yet.",
+  "buyer": "Buyer",
+  "price": "Agreed price",
+  "basePrice": "Base price",
+  "unnamed": "Connected buyer",
+  "awaitingConfirmation": "Awaiting the buyer's review",
+  "awaitingHint": "After a reconnection the buyer reviews agreed prices before they apply again.",
+  "edit": "Set price",
+  "editAria": "Set the agreed price for {buyer}",
+  "save": "Save",
+  "remove": "Remove",
+  "removeAria": "Remove the agreed price for {buyer}",
+  "saved": "Agreed price saved for {buyer}",
+  "removed": "{buyer} now pays the base price",
+  "priceInvalid": "Enter a positive price with at most two decimals, e.g. 19,60."
+}

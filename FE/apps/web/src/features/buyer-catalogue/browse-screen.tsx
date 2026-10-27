@@ -2,222 +2,205 @@
 
 import { useDeferredValue, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDownIcon, PackageSearchIcon, SearchIcon, UnplugIcon } from "lucide-react";
-import { formatNumber, type CatalogueItem } from "@repo/core";
+import { PackageSearchIcon, SearchIcon, UnplugIcon } from "lucide-react";
+import { formatNumber, type Offer, type OfferSort } from "@repo/core";
 import { EmptyState, ErrorState } from "@/components/query-states";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSignedIn } from "@/lib/session";
+import { Spinner } from "@/components/ui/spinner";
+import { useBusiness } from "@/lib/session";
 import { ProductCard } from "./product-card";
-import { useBuyerCatalogue, useBuyerShelves, useCategories, useTags } from "./queries";
+import { useFeaturedOffers, useMostOrdered, useOfferList, useOfferTaxonomy } from "./queries";
+import { useVendorContext } from "./vendor-context";
 
 const ALL = "all";
 
 /**
- * 03 → buyer "Catalogue browse (Home)": featured shelf (vendor-curated),
- * most-ordered shelf (this buyer's history with the active vendor), search and
- * category/tag filters. Everything is scoped to the active vendor.
+ * Buyer home: the active vendor's buyer-specific offers (GET /vendors/{id}/offers) with search,
+ * sort and category/tag filters, plus the vendor's featured shelf and the buyer's most-ordered
+ * shelf. Prices are this buyer's current prices at each product's minimum quantity (excl. VAT).
  */
 export function BrowseScreen() {
   const t = useTranslations("browse");
-  const { membership, activeVendor } = useSignedIn();
-  if (!activeVendor) {
-    return (
-      <EmptyState
-        icon={UnplugIcon}
-        title={t("noVendorsTitle")}
-        description={t("noVendorsDescription")}
-      />
-    );
-  }
+  const { active, isPending, error, refetch } = useVendorContext();
+  if (isPending) return <CardGridSkeleton />;
+  if (error) return <ErrorState error={error} onRetry={() => void refetch()} />;
+  if (!active) return <EmptyState icon={UnplugIcon} title={t("noVendorsTitle")} description={t("noVendorsDescription")} />;
   // key: switching vendor resets filters instead of carrying another vendor's category over.
-  return <Browse key={activeVendor.id} vendorOrgId={activeVendor.id} vendorName={activeVendor.name} buyerOrgId={membership.org.id} buyerName={membership.org.name} />;
+  return <Browse key={active.vendorId} vendorId={active.vendorId} vendorName={active.displayName} />;
 }
 
-function Browse({
-  vendorOrgId,
-  vendorName,
-  buyerOrgId,
-  buyerName,
-}: {
-  vendorOrgId: string;
-  vendorName: string;
-  buyerOrgId: string;
-  buyerName: string;
-}) {
+function Browse({ vendorId, vendorName }: { vendorId: string; vendorName: string }) {
   const t = useTranslations("browse");
-  const scope = { vendorOrgId, buyerOrgId };
+  const { organization } = useBusiness();
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<OfferSort>("NAME_ASC");
   const [categoryId, setCategoryId] = useState(ALL);
-  const [tagIds, setTagIds] = useState<string[]>([]);
-  const deferredSearch = useDeferredValue(search);
-  const categories = useCategories(vendorOrgId);
-  const tags = useTags(vendorOrgId);
-  const shelves = useBuyerShelves(scope);
-  const catalogue = useBuyerCatalogue(scope, {
-    search: deferredSearch,
+  const [tagId, setTagId] = useState(ALL);
+  const q = useDeferredValue(search);
+  const taxonomy = useOfferTaxonomy(vendorId);
+  const featured = useFeaturedOffers(vendorId);
+  const mostOrdered = useMostOrdered(vendorId);
+  const offers = useOfferList(vendorId, {
+    q,
+    sort,
     categoryId: categoryId === ALL ? undefined : categoryId,
-    tagIds,
+    tagId: tagId === ALL ? undefined : tagId,
   });
-  const filtering = search !== "" || categoryId !== ALL || tagIds.length > 0;
+  const filtering = search.trim() !== "" || categoryId !== ALL || tagId !== ALL;
+  const items = offers.data?.pages.flatMap((p) => p.items) ?? [];
+  const total = offers.data?.pages[0]?.total ?? null;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">{vendorName}</h1>
-        <p className="text-sm text-muted-foreground">{t("orderingFor", { buyer: buyerName })}</p>
+        <p className="text-sm text-muted-foreground">{t("orderingFor", { buyer: organization.displayName })}</p>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <InputGroup className="sm:max-w-sm">
+      <div className="flex flex-col gap-2 lg:flex-row">
+        <InputGroup className="lg:max-w-sm">
           <InputGroupAddon>
             <SearchIcon />
           </InputGroupAddon>
           <InputGroupInput
             value={search}
+            maxLength={100}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("searchPlaceholder", { vendor: vendorName })}
             aria-label={t("searchAria")}
           />
         </InputGroup>
-        <div className="flex gap-2">
-          <Select value={categoryId} onValueChange={setCategoryId}>
-            <SelectTrigger className="w-44" aria-label={t("filterCategory")}>
+        <div className="flex flex-wrap gap-2">
+          {taxonomy.data && taxonomy.data.categories.length > 0 && (
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger className="w-44" aria-label={t("filterCategory")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={ALL}>{t("allCategories")}</SelectItem>
+                  {taxonomy.data.categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+          {taxonomy.data && taxonomy.data.tags.length > 0 && (
+            <Select value={tagId} onValueChange={setTagId}>
+              <SelectTrigger className="w-40" aria-label={t("filterTag")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={ALL}>{t("allTags")}</SelectItem>
+                  {taxonomy.data.tags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.id}>
+                      {tag.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={sort} onValueChange={(v) => setSort(v as OfferSort)}>
+            <SelectTrigger className="w-40" aria-label={t("sort")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value={ALL}>{t("allCategories")}</SelectItem>
-                {categories.data?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="NAME_ASC">{t("sortName")}</SelectItem>
+                <SelectItem value="CREATED_DESC">{t("sortNewest")}</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
-          {tags.data && tags.data.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" aria-label={t("filterTag")}>
-                  {tagIds.length ? t("tagsCount", { count: formatNumber(tagIds.length) }) : t("allTags")}
-                  <ChevronDownIcon data-icon="inline-end" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-44">
-                <DropdownMenuGroup>
-                  {tags.data.map((t) => (
-                    <DropdownMenuCheckboxItem
-                      key={t.id}
-                      checked={tagIds.includes(t.id)}
-                      onCheckedChange={(on) => setTagIds((ids) => (on ? [...ids, t.id] : ids.filter((x) => x !== t.id)))}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      {t.name}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuGroup>
-                {tagIds.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem onSelect={() => setTagIds([])}>{t("clearTags")}</DropdownMenuItem>
-                    </DropdownMenuGroup>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {filtering && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSearch("");
+                setCategoryId(ALL);
+                setTagId(ALL);
+              }}
+            >
+              {t("clearFilters")}
+            </Button>
           )}
         </div>
       </div>
 
       {!filtering && (
         <>
-          {shelves.isError ? (
-            <ErrorState error={shelves.error} onRetry={() => void shelves.refetch()} />
-          ) : shelves.isPending ? (
-            <Shelf title={t("featured")} items={undefined} />
-          ) : (
-            <>
-              {shelves.data.featured.length > 0 && <Shelf title={t("featuredBy", { vendor: vendorName })} items={shelves.data.featured} />}
-              {shelves.data.mostOrdered.length > 0 && (
-                <Shelf
-                  title={t("mostOrdered")}
-                  items={shelves.data.mostOrdered}
-                  extra={(i) => {
-                    const m = shelves.data.mostOrdered.find((x) => x.product.id === i.product.id);
-                    return m ? t("orderedTimes", { count: formatNumber(m.orderCount) }) : undefined;
-                  }}
-                />
-              )}
-            </>
-          )}
+          <Shelf title={t("featuredBy", { vendor: vendorName })} query={featured} />
+          <Shelf title={t("mostOrdered")} query={mostOrdered} description={t("mostOrderedHint")} />
         </>
       )}
 
       <section className="flex flex-col gap-3" aria-labelledby="all-products">
         <h2 id="all-products" className="text-lg font-semibold">
           {filtering ? t("results") : t("allProducts")}
-          {catalogue.data && <span className="ml-1 text-sm font-normal text-muted-foreground">{" "}{formatNumber(catalogue.data.length)}</span>}
+          {total !== null && <span className="ml-1 text-sm font-normal text-muted-foreground"> {formatNumber(total)}</span>}
         </h2>
-        {catalogue.isError ? (
-          <ErrorState error={catalogue.error} onRetry={() => void catalogue.refetch()} />
-        ) : catalogue.isPending ? (
+        {offers.isError ? (
+          <ErrorState error={offers.error} onRetry={() => void offers.refetch()} />
+        ) : offers.isPending ? (
           <CardGridSkeleton />
-        ) : catalogue.data.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState
             icon={PackageSearchIcon}
             title={filtering ? t("noMatches") : t("noProducts")}
             description={filtering ? t("noMatchesHint") : undefined}
           />
         ) : (
-          <CardGrid items={catalogue.data} />
+          <>
+            <CardGrid items={items} />
+            {offers.hasNextPage && (
+              <div className="flex justify-center">
+                <Button variant="outline" disabled={offers.isFetchingNextPage} onClick={() => void offers.fetchNextPage()}>
+                  {offers.isFetchingNextPage && <Spinner data-icon="inline-start" />}
+                  {t("loadMore")}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>
   );
 }
 
+/** A horizontal-ish shelf of up to four offers; hidden when empty, quiet on error (the main list still works). */
 function Shelf({
   title,
-  items,
-  extra,
+  description,
+  query,
 }: {
   title: string;
-  items: CatalogueItem[] | undefined;
-  extra?: (item: CatalogueItem) => string | undefined;
+  description?: string;
+  query: { data?: Offer[]; isPending: boolean; isError: boolean };
 }) {
+  if (query.isError || (query.data && query.data.length === 0)) return null;
   return (
     <section className="flex flex-col gap-3" aria-label={title}>
-      <h2 className="text-lg font-semibold">{title}</h2>
-      {items ? <CardGrid items={items.slice(0, 4)} extra={extra} /> : <CardGridSkeleton count={4} />}
+      <div className="flex flex-col gap-0.5">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      </div>
+      {query.data ? <CardGrid items={query.data.slice(0, 4)} /> : <CardGridSkeleton count={4} />}
     </section>
   );
 }
 
-function CardGrid({ items, extra }: { items: CatalogueItem[]; extra?: (item: CatalogueItem) => string | undefined }) {
+function CardGrid({ items }: { items: Offer[] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {items.map((item) => (
-        <ProductCard key={item.product.id} item={item} extra={extra?.(item)} />
+      {items.map((offer) => (
+        <ProductCard key={offer.product.id} offer={offer} />
       ))}
     </div>
   );

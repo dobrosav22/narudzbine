@@ -1,0 +1,11 @@
+{
+  "editAria": "Edit {name}",
+  "merchandising": "Featured & promotions",
+  "loadMore": "Load more",
+  "segment": {
+    "products": "Products",
+    "categories": "Categories",
+    "tags": "Tags",
+    "units": "Units"
+  }
+}

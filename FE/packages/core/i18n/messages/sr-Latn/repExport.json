@@ -1,0 +1,29 @@
+{
+  "trigger": "Izvezi CSV",
+  "menuLabel": "Izvoz izabranog perioda",
+  "kind": {
+    "ORDERS": "Narudžbine (sva stanja)",
+    "REPORT_PRODUCTS": "Prodaja po proizvodu",
+    "REPORT_BUYERS": "Prodaja po kupcu"
+  },
+  "title": "Izvozi",
+  "description": "Pripremaju se u pozadini; svaka datoteka može da se preuzme 24 sata. Samo vi možete da preuzmete svoje izvoze.",
+  "dismiss": "Ukloni sa liste",
+  "requesting": "Zahtev se šalje",
+  "uncertain": "Nismo mogli da potvrdimo zahtev.",
+  "retry": "Pokušaj ponovo",
+  "state": {
+    "QUEUED": "Priprema se",
+    "EXPIRED": "Isteklo"
+  },
+  "failure": {
+    "EXPORT_ROW_LIMIT": "Previše redova. Izaberite kraći period.",
+    "EXPORT_SIZE_LIMIT": "Datoteka bi bila prevelika. Izaberite kraći period.",
+    "EXPORT_CAPACITY_REACHED": "Izvoz je trenutno zauzet. Pokušajte kasnije.",
+    "REPORT_OVERFLOW": "Zbirovi su preveliki za izvoz.",
+    "ACCESS_REVOKED": "Više nemate pristup ovom izvozu.",
+    "other": "Izvoz nije uspeo."
+  },
+  "availableUntil": "Dostupno do {date}",
+  "download": "Preuzmi"
+}

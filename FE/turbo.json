@@ -2,15 +2,11 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
   "globalEnv": [
-    "USE_MOCKS",
-    "NEXT_PUBLIC_USE_MOCKS",
-    "EXPO_PUBLIC_USE_MOCKS",
-    "CURRENCY",
-    "NEXT_PUBLIC_CURRENCY",
-    "EXPO_PUBLIC_CURRENCY",
-    "LOCALE",
-    "NEXT_PUBLIC_LOCALE",
-    "EXPO_PUBLIC_LOCALE"
+    "API_BASE_URL",
+    "NEXT_PUBLIC_API_BASE_URL",
+    "EXPO_PUBLIC_API_BASE_URL",
+    "NEXT_PUBLIC_EXTERNAL_LOGIN_PROVIDERS",
+    "EXPO_PUBLIC_EXTERNAL_AUTH_RETURN_URL"
   ],
   "tasks": {
     "build": {

@@ -1,7 +1,5 @@
-import { BuyersScreen } from '@/features/vendor-orders/buyers-screen';
-import { useSignedIn } from '@/lib/session';
+import { VendorBuyersScreen } from '@/features/trading/vendor-buyers-screen';
 
 export default function VendorBuyers() {
-  const { membership } = useSignedIn();
-  return <BuyersScreen vendorOrgId={membership.org.id} />;
+  return <VendorBuyersScreen />;
 }

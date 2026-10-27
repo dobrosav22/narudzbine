@@ -1,0 +1,21 @@
+{
+  "mainNavigation": "Glavna navigacija",
+  "dashboard": "Pregled",
+  "catalogue": "Katalog",
+  "orders": "Porudžbine",
+  "buyers": "Kupci",
+  "stats": "Statistika",
+  "notifications": "Obaveštenja",
+  "team": "Tim",
+  "locations": "Lokacije",
+  "settings": "Podešavanja",
+  "browse": "Ponuda",
+  "cart": "Korpa",
+  "drafts": "Nacrti",
+  "favorites": "Omiljeno",
+  "vendors": "Dobavljači",
+  "organizations": "Organizacije",
+  "planRequests": "Zahtevi za plan",
+  "audit": "Dnevnik aktivnosti",
+  "account": "Nalog"
+}

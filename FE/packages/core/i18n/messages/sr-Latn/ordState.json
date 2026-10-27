@@ -1,0 +1,16 @@
+{
+  "AWAITING_ACCEPTANCE": "Čeka prihvatanje",
+  "ACCEPTED": "Prihvaćena",
+  "DISPATCHED": "Otpremljena",
+  "DELIVERED": "Isporučena",
+  "REJECTED": "Odbijena",
+  "CANCELLED": "Otkazana",
+  "withStage": "{state} · {stage}",
+  "progress": "Tok narudžbine",
+  "step": {
+    "AWAITING_ACCEPTANCE": "Naručena",
+    "ACCEPTED": "Prihvaćena",
+    "DISPATCHED": "Otpremljena",
+    "DELIVERED": "Isporučena"
+  }
+}

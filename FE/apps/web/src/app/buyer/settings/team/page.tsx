@@ -1,7 +1,5 @@
-"use client";
-
-import { BuyerTeamSettingsPage } from "@/features/org-admin/pages";
+import { TeamPanel } from "@/features/org-admin/team-panel";
 
 export default function Page() {
-  return <BuyerTeamSettingsPage />;
+  return <TeamPanel />;
 }
