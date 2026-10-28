@@ -64,10 +64,26 @@ def main():
     classpath = properties.get("java.class.path", "")
     if not classpath or "testcontainers" not in classpath: stop("Verified test classpath missing.")
     launched = time.time()
-    result = subprocess.run([str(java), "-Xmx1g", "-cp", classpath,
+    harness = subprocess.Popen([str(java), "-Xmx1g", "-cp", classpath,
             "com.narudzbine.identity.AuthHttpIT$LocalDevelopment", "--" + args.mode],
-            cwd=str(backend), env=environment, timeout=900 if args.mode == "check" else int(os.environ.get("LOCAL_SYNTHETIC_SERVE_SECONDS", "3600")) + 120)
-    if result.returncode: stop("Synthetic development harness did not complete successfully.")
+            cwd=str(backend), env=environment)
+    deadline = launched + (900 if args.mode == "check" else int(os.environ.get("LOCAL_SYNTHETIC_SERVE_SECONDS", "3600")) + 120)
+    owned = lambda: subprocess.run(["docker", "ps", "-a", "--filter", "label=com.narudzbine.synthetic-run=" + run_id, "--format", "{{.ID}}"], capture_output=True, text=True, timeout=15, env=environment)
+    try:
+        # Poll instead of a blocking wait so an interrupt is noticed while the harness runs.
+        while harness.poll() is None:
+            if time.time() > deadline:
+                harness.kill()
+                stop("Synthetic development harness exceeded its bounded run.")
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        # The harness received the same interrupt; its shutdown hook closes the app and then the owned
+        # database. Killing it here would skip that cleanup.
+        try: harness.wait(timeout=120)
+        except subprocess.TimeoutExpired: harness.kill()
+        remaining = owned()
+        stop("Interrupted; owned synthetic database " + ("remains for run label " + run_id if remaining.returncode or remaining.stdout.strip() else "closed") + ".")
+    if harness.returncode: stop("Synthetic development harness did not complete successfully.")
     evidence_path = backend / "target" / ("local-development-" + run_id + ".json")
     if not evidence_path.is_file() or evidence_path.stat().st_mtime < launched: stop("Fresh run-bound developer evidence missing.")
     evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
@@ -82,7 +98,7 @@ def main():
     contract = json.loads((repository / "openapi.yaml").read_text(encoding="utf-8"))
     wanted = {normalize(method.upper() + " /api/v1" + path) for path, item in contract["paths"].items() for method in item if method in {"get", "post", "put", "patch", "delete", "head", "options"}}
     if actual != wanted: stop("Contract route presence mismatch: " + json.dumps({"missing": sorted(wanted-actual), "extra": sorted(actual-wanted)}))
-    remaining = subprocess.run(["docker", "ps", "-a", "--filter", "label=com.narudzbine.synthetic-run=" + run_id, "--format", "{{.ID}}"], capture_output=True, text=True, timeout=15, env=environment)
+    remaining = owned()
     if remaining.returncode or remaining.stdout.strip(): stop("Owned synthetic database remains; no clean completion claim.")
     print(json.dumps({"syntheticDevelopment": "passed", "runId": run_id, "contractOperationsPresent": len(wanted), "requesterJsonDownloads": 4, "ownedDatabaseRemaining": False, "report": str(evidence_path)}))
 

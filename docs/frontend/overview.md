@@ -30,6 +30,17 @@ Each app has a `.env.example`. Real hosts are external inputs (X-02); `eas.json`
 
 ## Local development against the backend
 
+One command from the repository root starts everything: the synthetic backend with its own disposable PostgreSQL, the HTTPS API proxy, the web dev server, seeded demo data and the Expo dev server in the foreground (press `a` for the Android emulator).
+
+```sh
+python dev.py                    # backend + web + mobile (Android emulator)
+python dev.py --mobile ios       # iOS Simulator (macOS only)
+python dev.py --mobile web       # Expo web preview with the native transport
+python dev.py --mobile none      # backend + web only; also --no-web, --no-seed, --hours 1..8
+```
+
+It checks Docker, the pinned JDK, `node_modules`, free ports and the dev certificate first (creating the certificate with openssl if missing), prints the URLs and synthetic accounts, and writes service logs plus `ready.json` to `.dev/` (gitignored). Ctrl+C stops everything; the backend closes its own database container, and a forced stop removes only containers carrying that run's label. Everything listens on loopback, so a physical phone cannot reach the backend; use an emulator/Simulator. The individual steps it automates:
+
 ```sh
 # Backend: pinned JDK 25 in ../.tools, Docker running (see ../BE/operations/README.md)
 LOCAL_SYNTHETIC_SERVE_SECONDS=28800 LOCAL_SYNTHETIC_API_PORT=18080 \
@@ -52,3 +63,7 @@ UI resources: English and Serbian Latin (`packages/core/i18n/messages/<language>
 ## Android builds
 
 `apps/mobile/eas.json`: `preview` builds an installable APK, `production` an AAB. Both need a real `EXPO_PUBLIC_API_BASE_URL` (replace the `.invalid` placeholders) and the real Android package id in `app.json` (`rs.narudzbine.app` is a placeholder and can't change after release). Store releases need separate approval.
+
+## iOS builds
+
+`app.json` sets `ios.bundleIdentifier: rs.narudzbine.app`, a placeholder like the Android package id that must be confirmed before any shared build (it cannot change after release). `eas.json` `ios-simulator` builds a Simulator app without Apple credentials; `preview` (internal/ad hoc) and `production` iOS builds need an Apple Developer account, signing and registered test devices (X-01/X-02). The iOS JavaScript bundle builds (`expo export -p ios`); the app has not yet run on a Simulator or device, and Apple sign-in, push and export-compliance settings remain open.

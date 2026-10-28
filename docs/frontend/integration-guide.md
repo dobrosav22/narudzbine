@@ -72,6 +72,8 @@ Namespaces are files: `packages/core/i18n/messages/en/<ns>.json` and `.../sr-Lat
 
 ## Local backend for development and tests
 
+`python dev.py` at the repository root runs steps 1–3 together (see [overview](overview.md#local-development-against-the-backend)). The manual steps:
+
 1. Backend (pinned JDK 25 in `.tools`, Docker running): `LOCAL_SYNTHETIC_SERVE_SECONDS=28800 LOCAL_SYNTHETIC_API_PORT=18080 LOCAL_SYNTHETIC_BROWSER_ORIGINS=https://localhost:3000,https://localhost:3103 python BE/operations/local_development.py serve`. The READY line lists synthetic RS/BA vendor and buyer owner emails and a platform admin; the password is the fixed synthetic test fixture `long synthetic password`. Data is fresh on each start.
 2. `pnpm dev:cert` once (self-signed localhost cert, gitignored), then `pnpm dev:api-proxy` → https://localhost:18443 (browser transport) and/or `pnpm dev:api-proxy:native` → https://localhost:18444 (Expo web preview with the native transport).
 3. Web: `pnpm dev:web` → https://localhost:3000 (`NEXT_PUBLIC_API_BASE_URL=https://localhost:18443/api/v1`). Mobile: `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:18080/api/v1` for the Android emulator.

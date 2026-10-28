@@ -1,5 +1,6 @@
 # Local backend tooling and generated build evidence
 /.tools/
+/.dev/
 /BE/target/
 /BE/.maven-user-home/
 /BE/.idea/
