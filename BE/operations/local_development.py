@@ -87,7 +87,7 @@ def main():
     evidence_path = backend / "target" / ("local-development-" + run_id + ".json")
     if not evidence_path.is_file() or evidence_path.stat().st_mtime < launched: stop("Fresh run-bound developer evidence missing.")
     evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
-    expected = {"runId": run_id, "syntheticOnly": True, "countryIsolationVerified": True, "externalDeliveryEnabled": False, "providerConformanceClaim": False, "portableJsonWorkerEnabled": True, "portableJsonDownloadsVerified": 4}
+    expected = {"runId": run_id, "syntheticOnly": True, "countryIsolationVerified": True, "externalDeliveryEnabled": False, "providerConformanceClaim": False, "portableJsonWorkerEnabled": True, "inAppInboxWorkerEnabled": True, "portableJsonDownloadsVerified": 4}
     if any(evidence.get(k) != v for k, v in expected.items()): stop("Synthetic harness postconditions failed.")
     def expand(route):
         match = re.search(r"\{[^{}:]+:([A-Za-z0-9_-]+(?:\|[A-Za-z0-9_-]+)+)\}", route)

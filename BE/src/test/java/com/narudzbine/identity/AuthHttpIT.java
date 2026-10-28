@@ -7091,7 +7091,7 @@ class AuthHttpIT {
                 owner.execute(java.nio.file.Files.readString(java.nio.file.Path.of("privacy/portable-json-worker-grants.sql")).replace("__WORKER_ROLE__","development_portable_worker"));
                 owner.execute(java.nio.file.Files.readString(java.nio.file.Path.of("privacy/portable-json-http-grants.sql")).replace("__RUNTIME_ROLE__","http_runtime"));
                 var properties=new java.util.ArrayList<String>(java.util.Arrays.asList(app.getBean(org.springframework.boot.ApplicationArguments.class).getSourceArgs()));
-                properties.addAll(java.util.List.of("--privacy.exports.enabled=true","--privacy.exports.worker-enabled=true","--privacy.exports.artifact-key="+key(),
+                properties.addAll(java.util.List.of("--notifications.inbox.enabled=true","--privacy.exports.enabled=true","--privacy.exports.worker-enabled=true","--privacy.exports.artifact-key="+key(),
                         "--privacy.exports.jdbc-url="+DATABASE.getJdbcUrl(),"--privacy.exports.username=development_portable_worker","--privacy.exports.password="+portablePassword));
                 // Optional frontend-development inputs (loopback only): extra exact https browser origins
                 // validated by SessionTransportPolicy, and a fixed loopback API port for the web proxy.
@@ -7163,11 +7163,21 @@ class AuthHttpIT {
                     assertThat(orders.get(0).path("id").asString()).isEqualTo(item.orderId());
                     assertProblem(fixture.send("GET",item.path()+"/content",null,"Authorization","Bearer "+operator),404,"NOT_FOUND");
                 }
+                long inboxDeadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(30);
+                for(var review:java.util.List.of(rs,ba)) {
+                    boolean published=false;
+                    while(System.nanoTime()<inboxDeadline) {
+                        if(!fixture.inboxPage(review.offer().stock().token(),"").path("items").isEmpty()){published=true;break;}
+                        Thread.sleep(500);
+                    }
+                    assertThat(published).as("in-app worker publishes the seeded vendor order notice within bound").isTrue();
+                }
                 var evidence = new java.util.LinkedHashMap<String,Object>(Map.of("syntheticOnly", true, "schema", 78,
                         "baseUrl", "http://127.0.0.1:" + port + "/api/v1", "privateManagementUrl", "http://127.0.0.1:" + management,
                         "countryIsolationVerified", true, "externalDeliveryEnabled", false, "providerConformanceClaim", false,
                         "fixtures", scenarios, "mode", args[0], "maximumServeSeconds", serveSeconds()));
                 evidence.put("portableJsonWorkerEnabled",true);
+                evidence.put("inAppInboxWorkerEnabled",true);
                 evidence.put("runId",runId);
                 evidence.put("portableJsonDownloadsVerified",pending.size());
                 evidence.put("platformOperatorEmail",operatorEmail);
