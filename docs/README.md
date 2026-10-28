@@ -24,6 +24,7 @@ Repeat wholesale ordering between existing trading partners in Serbia (RSD) and 
 | [Traceability](project/traceability.md) | Requirement and API operation → planned implementation and verification. |
 | [Implementation plan](project/implementation-plan.md) | Vertical slices VS-00…13 and their acceptance. |
 | [Local completion plan](project/local-completion-plan.md) | The serial plan that finished local backend work. |
+| [Future changes](project/future-changes.md) | User-selected ordering features not yet approved for implementation (pickup, requested date, cutoff, auto-accept, PO number, staff approval). |
 | [Planning review](project/planning-review.md) | P1.1 planning review and its independent findings. |
 | [Source inventory](project/source-inventory.md) | What the original frontend source contained (historical evidence). |
 
@@ -53,6 +54,9 @@ Repeat wholesale ordering between existing trading partners in Serbia (RSD) and 
 | [Area notes](frontend/area-notes/) | Per-area integration detail: [identity & organization](frontend/area-notes/identity-organization.md), [vendor catalogue](frontend/area-notes/vendor-catalogue.md), [buyer ordering](frontend/area-notes/buyer-ordering.md), [orders](frontend/area-notes/orders.md), [trading, reporting & plans](frontend/area-notes/trading-reporting-plans.md), [platform admin](frontend/area-notes/platform-admin.md). |
 | [Backend handoff](frontend/backend-handoff.md) | Per-increment API handoff notes written by the backend. |
 | [E2E testing](frontend/e2e-testing.md) | Browser checks against the local backend and the limits they respect. |
+| [Web on mobile](frontend/web-on-mobile.md) | Planned tightening of the web app at phone width: known issues, how to explore and fix them. |
+| [QA exploration](frontend/qa-exploration.md) | Playbook for exploratory QA of every screen, flow and environment. |
+| [QA findings](frontend/qa-findings.md) | Register of QA findings that an agent fixes and retests. |
 | [Build log](frontend/build-log.md) | Append-only frontend decisions and discoveries. |
 
 ## Product — original intent
