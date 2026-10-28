@@ -5,6 +5,14 @@
   "emptyDescription": "Korpa je prazna.",
   "browse": "Pregledaj katalog",
   "backToCart": "Nazad na korpu",
+  "steps": "Koraci porudžbine",
+  "step": {
+    "details": "Detalji isporuke",
+    "review": "Pregled i slanje"
+  },
+  "editDetails": "Izmeni detalje",
+  "deliverySummary": "Isporuka",
+  "noteTitle": "Napomena dobavljaču",
   "noLocations": "Vaša firma još nema aktivnu adresu isporuke.",
   "manageLocations": "Upravljaj adresama isporuke",
   "deliveryLocation": "Adresa isporuke",

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeftIcon, ClockIcon, FileClockIcon, ShoppingCartIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, ClockIcon, FileClockIcon, ShoppingCartIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -33,7 +33,7 @@ import { EmptyState, ErrorState, RowsSkeleton } from "@/components/query-states"
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -44,6 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cartStore, useCart } from "@/lib/cart";
 import { useErrorText } from "@/lib/i18n";
 import { sessionStore, useBusiness } from "@/lib/session";
+import { cn } from "@/lib/utils";
 import { isDraftConflict, useSaveCartAsDraft } from "@/features/buyer-catalogue/cart-actions";
 import { DraftConflictDialog } from "@/features/buyer-catalogue/draft-conflict";
 import { useActiveLocations } from "@/features/buyer-catalogue/queries";
@@ -62,8 +63,40 @@ function useNow(intervalMs = 10_000): number {
   return now;
 }
 
+/** Two checkout steps; the second exists only while a review receipt is held. */
+function CheckoutSteps({ current }: { current: 1 | 2 }) {
+  const t = useTranslations("checkout");
+  const steps = [t("step.details"), t("step.review")];
+  return (
+    <ol className="flex items-center gap-3" aria-label={t("steps")}>
+      {steps.map((label, i) => {
+        const n = i + 1;
+        const done = n < current;
+        const active = n === current;
+        return (
+          <li key={label} className="flex items-center gap-3" aria-current={active ? "step" : undefined}>
+            {i > 0 && <span aria-hidden className={cn("h-px w-8 sm:w-16", done || active ? "bg-primary" : "bg-border")} />}
+            <span
+              className={cn(
+                "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-medium",
+                active && "border-primary bg-primary text-primary-foreground",
+                done && "border-primary text-primary",
+                !active && !done && "border-border text-muted-foreground",
+              )}
+            >
+              {done ? <CheckIcon className="size-4" /> : n}
+            </span>
+            <span className={cn("text-sm", active ? "font-medium" : "text-muted-foreground")}>{label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 /**
- * Checkout: delivery details → POST /order-reviews (exact receipt, 15 minutes) → explicit
+ * Checkout in two steps. Step 1: delivery details. "Review order" calls POST /order-reviews
+ * (exact receipt, 15 minutes) and moves to step 2, which shows only the receipt and the explicit
  * submission. Direct orders use POST /orders with an Idempotency-Key kept per receipt; a cart
  * linked to a shared draft submits through POST /drafts/{id}/submission and consumes the draft.
  * Changed terms always need explicit reconfirmation; nothing is submitted automatically.
@@ -94,6 +127,12 @@ export function CheckoutScreen() {
   const state = cart.state;
   const scope = cart.scope;
   const pending = state.pendingSubmission;
+  const step = reviewed ? 2 : 1;
+
+  // Each step starts at the top, so the review is never left below the fold.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [step]);
 
   // Default the delivery location to the only/first active one; drop an archived choice.
   useEffect(() => {
@@ -135,6 +174,7 @@ export function CheckoutScreen() {
   const failed = (e: unknown, during: "review" | "submit") => {
     if (during === "review" && state.draft && isDraftConflict(e) && isApiError(e, "REVISION_CONFLICT")) return setConflict(true);
     if (during === "submit" && isApiError(e, "REVISION_CONFLICT")) return setConflict(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const terms = termsChange(e);
     if (terms && reviewed) {
       if (terms.currentTerms) {
@@ -150,6 +190,12 @@ export function CheckoutScreen() {
     if (isApiError(e, "FORBIDDEN")) void sessionStore.refresh();
     setUncertain(isUncertainOutcome(e) || isApiError(e, "REQUEST_IN_PROGRESS"));
     setError(e);
+  };
+
+  const backToDetails = () => {
+    setReviewed(null);
+    setChanged(new Set());
+    setError(null);
   };
 
   const review = async () => {
@@ -188,16 +234,24 @@ export function CheckoutScreen() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <Button asChild variant="ghost" size="icon" aria-label={t("backToCart")}>
-          <Link href="/buyer/cart">
+        {step === 1 ? (
+          <Button asChild variant="ghost" size="icon" aria-label={t("backToCart")}>
+            <Link href="/buyer/cart">
+              <ArrowLeftIcon />
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" aria-label={t("editDetails")} disabled={busy !== null} onClick={backToDetails}>
             <ArrowLeftIcon />
-          </Link>
-        </Button>
+          </Button>
+        )}
         <div className="flex flex-col">
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
           {vendor.active && <p className="text-sm text-muted-foreground">{t("orderFrom", { vendor: vendor.active.displayName })}</p>}
         </div>
       </div>
+
+      <CheckoutSteps current={step} />
 
       {pending && (
         <Alert>
@@ -234,101 +288,103 @@ export function CheckoutScreen() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("deliveryLocation")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <LocationSelect locations={locations.data} value={state.deliveryLocationId} onChange={(id) => editDetails({ deliveryLocationId: id })} />
-            </CardContent>
-          </Card>
+        {!reviewed ? (
+          <div className="flex flex-col gap-6 lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("deliveryLocation")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LocationSelect locations={locations.data} value={state.deliveryLocationId} onChange={(id) => editDetails({ deliveryLocationId: id })} />
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("detailsTitle")}</CardTitle>
-              <CardDescription>{t("detailsDescription")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FieldGroup>
-                <Field orientation="horizontal">
-                  <Switch
-                    id="contact-override"
-                    checked={contactOn}
-                    onCheckedChange={(on) => {
-                      setContactOn(on);
-                      setReviewed(null);
-                    }}
-                  />
-                  <FieldLabel htmlFor="contact-override">{t("contactOverride")}</FieldLabel>
-                </Field>
-                {!contactOn && location && (
-                  <FieldDescription>
-                    {location.contact ? t("contactInherited", { name: location.contact.name, phone: location.contact.phone }) : t("contactFromOrganization")}
-                  </FieldDescription>
-                )}
-                {contactOn && (
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <Field>
-                      <FieldLabel htmlFor="contact-name">{t("contactName")}</FieldLabel>
-                      <Input id="contact-name" maxLength={100} value={contact.name} aria-invalid={!contact.name.trim() || undefined} onChange={(e) => { setContact({ ...contact, name: e.target.value }); setReviewed(null); }} />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="contact-phone">{t("contactPhone")}</FieldLabel>
-                      <Input id="contact-phone" type="tel" maxLength={30} value={contact.phone} aria-invalid={contact.phone.trim().length < 3 || undefined} onChange={(e) => { setContact({ ...contact, phone: e.target.value.replace(/[^+0-9 ()-]/g, "") }); setReviewed(null); }} />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="contact-email">{t("contactEmail")}</FieldLabel>
-                      <Input id="contact-email" type="email" maxLength={254} value={contact.email ?? ""} onChange={(e) => { setContact({ ...contact, email: e.target.value || null }); setReviewed(null); }} />
-                    </Field>
-                  </div>
-                )}
-
-                <Field>
-                  <FieldLabel>{t("instructions")}</FieldLabel>
-                  <RadioGroup value={state.instructionsMode} onValueChange={(m) => editDetails({ instructionsMode: m as InstructionsMode })}>
-                    {MODES.map((m) => (
-                      <Field key={m} orientation="horizontal">
-                        <RadioGroupItem value={m} id={`mode-${m}`} />
-                        <FieldLabel htmlFor={`mode-${m}`} className="font-normal">
-                          {t(`instructionsMode.${m}`)}
-                        </FieldLabel>
-                      </Field>
-                    ))}
-                  </RadioGroup>
-                  {state.instructionsMode === "INHERIT" && (
-                    <FieldDescription>{location?.instructions ? t("instructionsInherited", { text: location.instructions }) : t("instructionsNone")}</FieldDescription>
-                  )}
-                  {state.instructionsMode === "OVERRIDE" && (
-                    <Textarea
-                      aria-label={t("instructionsText")}
-                      maxLength={1000}
-                      value={state.instructionsOverride ?? ""}
-                      aria-invalid={!overrideValid || undefined}
-                      onChange={(e) => editDetails({ instructionsOverride: e.target.value })}
-                    />
-                  )}
-                </Field>
-
-                <Field>
-                  <FieldLabel htmlFor="order-note">{t("note")}</FieldLabel>
-                  <Textarea id="order-note" maxLength={1000} value={state.note ?? ""} onChange={(e) => editDetails({ note: e.target.value })} />
-                  <FieldDescription>{t("noteHint")}</FieldDescription>
-                </Field>
-
-                {state.replacementForOrderId && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("detailsTitle")}</CardTitle>
+                <CardDescription>{t("detailsDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FieldGroup>
                   <Field orientation="horizontal">
-                    <FieldDescription className="flex-1">{t("replacementFor")}</FieldDescription>
-                    <Button size="sm" variant="ghost" onClick={() => editDetails({ replacementForOrderId: null })}>
-                      {t("notReplacement")}
-                    </Button>
+                    <Switch
+                      id="contact-override"
+                      checked={contactOn}
+                      onCheckedChange={(on) => {
+                        setContactOn(on);
+                        setReviewed(null);
+                      }}
+                    />
+                    <FieldLabel htmlFor="contact-override">{t("contactOverride")}</FieldLabel>
                   </Field>
-                )}
-              </FieldGroup>
-            </CardContent>
-          </Card>
+                  {!contactOn && location && (
+                    <FieldDescription>
+                      {location.contact ? t("contactInherited", { name: location.contact.name, phone: location.contact.phone }) : t("contactFromOrganization")}
+                    </FieldDescription>
+                  )}
+                  {contactOn && (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <Field>
+                        <FieldLabel htmlFor="contact-name">{t("contactName")}</FieldLabel>
+                        <Input id="contact-name" maxLength={100} value={contact.name} aria-invalid={!contact.name.trim() || undefined} onChange={(e) => { setContact({ ...contact, name: e.target.value }); setReviewed(null); }} />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="contact-phone">{t("contactPhone")}</FieldLabel>
+                        <Input id="contact-phone" type="tel" maxLength={30} value={contact.phone} aria-invalid={contact.phone.trim().length < 3 || undefined} onChange={(e) => { setContact({ ...contact, phone: e.target.value.replace(/[^+0-9 ()-]/g, "") }); setReviewed(null); }} />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="contact-email">{t("contactEmail")}</FieldLabel>
+                        <Input id="contact-email" type="email" maxLength={254} value={contact.email ?? ""} onChange={(e) => { setContact({ ...contact, email: e.target.value || null }); setReviewed(null); }} />
+                      </Field>
+                    </div>
+                  )}
 
-          {reviewed && (
+                  <Field>
+                    <FieldLabel>{t("instructions")}</FieldLabel>
+                    <RadioGroup value={state.instructionsMode} onValueChange={(m) => editDetails({ instructionsMode: m as InstructionsMode })}>
+                      {MODES.map((m) => (
+                        <Field key={m} orientation="horizontal">
+                          <RadioGroupItem value={m} id={`mode-${m}`} />
+                          <FieldLabel htmlFor={`mode-${m}`} className="font-normal">
+                            {t(`instructionsMode.${m}`)}
+                          </FieldLabel>
+                        </Field>
+                      ))}
+                    </RadioGroup>
+                    {state.instructionsMode === "INHERIT" && (
+                      <FieldDescription>{location?.instructions ? t("instructionsInherited", { text: location.instructions }) : t("instructionsNone")}</FieldDescription>
+                    )}
+                    {state.instructionsMode === "OVERRIDE" && (
+                      <Textarea
+                        aria-label={t("instructionsText")}
+                        maxLength={1000}
+                        value={state.instructionsOverride ?? ""}
+                        aria-invalid={!overrideValid || undefined}
+                        onChange={(e) => editDetails({ instructionsOverride: e.target.value })}
+                      />
+                    )}
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="order-note">{t("note")}</FieldLabel>
+                    <Textarea id="order-note" maxLength={1000} value={state.note ?? ""} onChange={(e) => editDetails({ note: e.target.value })} />
+                    <FieldDescription>{t("noteHint")}</FieldDescription>
+                  </Field>
+
+                  {state.replacementForOrderId && (
+                    <Field orientation="horizontal">
+                      <FieldDescription className="flex-1">{t("replacementFor")}</FieldDescription>
+                      <Button size="sm" variant="ghost" onClick={() => editDetails({ replacementForOrderId: null })}>
+                        {t("notReplacement")}
+                      </Button>
+                    </Field>
+                  )}
+                </FieldGroup>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-6 lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle>{t("receiptTitle")}</CardTitle>
@@ -337,7 +393,7 @@ export function CheckoutScreen() {
                   {expired ? t("receiptExpired") : t("receiptValidUntil", { time: formatDateTime(reviewed.review.expiresAt) })}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col gap-4">
+              <CardContent>
                 <Table className="text-sm">
                   <TableHeader>
                     <TableRow>
@@ -378,7 +434,20 @@ export function CheckoutScreen() {
                     ))}
                   </TableBody>
                 </Table>
-                <dl className="grid gap-2 text-sm sm:grid-cols-2">
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("deliverySummary")}</CardTitle>
+                <CardAction>
+                  <Button size="sm" variant="outline" disabled={busy !== null} onClick={backToDetails}>
+                    {t("editDetails")}
+                  </Button>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-3 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="text-muted-foreground">{t("deliverTo")}</dt>
                     <dd>{formatAddress(reviewed.review.deliveryAddress)}</dd>
@@ -394,11 +463,18 @@ export function CheckoutScreen() {
                     <dt className="text-muted-foreground">{t("instructions")}</dt>
                     <dd>{reviewed.review.deliveryInstructions ?? t("instructionsNone")}</dd>
                   </div>
+                  {reviewed.review.intent.note && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-muted-foreground">{t("noteTitle")}</dt>
+                      <dd className="whitespace-pre-line">{reviewed.review.intent.note}</dd>
+                    </div>
+                  )}
                 </dl>
+                {reviewed.review.intent.replacementForOrderId && <p className="mt-3 text-sm text-muted-foreground">{t("replacementFor")}</p>}
               </CardContent>
             </Card>
-          )}
-        </div>
+          </div>
+        )}
 
         <Card className="h-fit lg:sticky lg:top-6">
           <CardHeader>
@@ -450,6 +526,11 @@ export function CheckoutScreen() {
               >
                 {save.isPending && <Spinner data-icon="inline-start" />}
                 {state.draft ? t("updateDraft") : t("saveAsDraft")}
+              </Button>
+            )}
+            {reviewed && (
+              <Button variant="ghost" disabled={busy !== null} onClick={backToDetails}>
+                {t("editDetails")}
               </Button>
             )}
             <p className="text-xs text-muted-foreground">{t("noPayment")}</p>

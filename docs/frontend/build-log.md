@@ -746,3 +746,9 @@ What: Root `dev.py` starts the synthetic backend (own PostgreSQL), API proxy, we
 Why: The user asked for one local run script and for iOS support.
 Affects: Both platform bundles now build. iOS has not run on a Simulator/device; the bundle id is a placeholder to confirm before any shared build. See overview.md (local development, iOS builds).
 
+### 2026-10-28 — Checkout split into two steps
+
+What: Web and mobile checkout are now two steps on the same route, with a step indicator: (1) delivery details, (2) review and place. "Review order" fetches the receipt (`POST /order-reviews`) and switches to step 2, which shows only the priced lines, a delivery summary (address, contact, instructions, note) and the place/save actions; "Change details" (and the header back arrow on web, Android back on mobile) returns to step 1 and drops the receipt. Each step change scrolls to the top; a failed submission scrolls up to the error. Terms that change at submission keep step 2 with changed lines marked; unavailable lines return to step 1 with the error.
+Why: The user found the review appended below the details form easy to miss without scrolling.
+Affects: Screens-and-flows checkout layout. Labels the e2e flow clicks ("Review order", "Order review", "Place order") are unchanged.
+

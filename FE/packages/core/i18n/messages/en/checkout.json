@@ -5,6 +5,14 @@
   "emptyDescription": "Your cart is empty.",
   "browse": "Browse the catalogue",
   "backToCart": "Back to cart",
+  "steps": "Checkout steps",
+  "step": {
+    "details": "Delivery details",
+    "review": "Review and place"
+  },
+  "editDetails": "Change details",
+  "deliverySummary": "Delivery",
+  "noteTitle": "Note to the vendor",
   "noLocations": "Your company has no active delivery location yet.",
   "manageLocations": "Manage delivery locations",
   "deliveryLocation": "Delivery location",
