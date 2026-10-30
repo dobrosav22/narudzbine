@@ -65,3 +65,31 @@ export function stepQuantity(quantity: number, rule: QuantityRule, direction: 1 
   }
   return Math.max(min, quantity - s);
 }
+
+export type QuantityInput =
+  | { kind: 'EMPTY' }
+  /** Not a plain whole number: decimals ("6.5", "1,5"), separators ("1.000"), signs or letters. */
+  | { kind: 'NOT_WHOLE' }
+  /** `adjusted`: the typed number was moved to the nearest valid quantity (minimum or step). */
+  | { kind: 'OK'; quantity: number; adjusted: boolean };
+
+/**
+ * Reads a typed quantity. Only plain digits count: a decimal or thousands separator is ambiguous
+ * between languages ("1.000" is a thousand in Serbian), so it is rejected instead of being dropped,
+ * which would turn "6.5" into 65.
+ */
+export function readTypedQuantity(text: string, rule: QuantityRule): QuantityInput {
+  const trimmed = text.trim();
+  if (trimmed === '') return { kind: 'EMPTY' };
+  if (!/^\d+$/.test(trimmed)) return { kind: 'NOT_WHOLE' };
+  const typed = Number(trimmed);
+  const quantity = snapQuantity(typed, rule);
+  return { kind: 'OK', quantity, adjusted: quantity !== typed };
+}
+
+/** Quantities at or above this ask for confirmation before an order is placed (QA-016). */
+export const LARGE_QUANTITY = 1000;
+
+export function isLargeQuantity(quantity: number): boolean {
+  return quantity >= LARGE_QUANTITY;
+}

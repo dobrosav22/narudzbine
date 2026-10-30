@@ -182,7 +182,7 @@ function PromotionForm({ promotion, onClose }: { promotion: Promotion | undefine
               <FieldError>{err(errors.buyers)}</FieldError>
             </FieldSet>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field data-invalid={!!errors.startsAt || undefined}>
                 <FieldLabel htmlFor="promo-start">{t("starts")}</FieldLabel>
                 <Input id="promo-start" type="datetime-local" value={draft.startsAt} onChange={(e) => set("startsAt", e.target.value)} />

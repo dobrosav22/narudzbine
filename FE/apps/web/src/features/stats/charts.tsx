@@ -46,7 +46,7 @@ export function PeriodChart({
         .map((b) => `${bucketLabel(b.periodStart, grouping)} ${formatMoney(b.goodsTotal, currency)}`)
         .join(", ")}`}
     >
-      <BarChart data={rows} accessibilityLayer margin={{ left: 4, right: 4 }}>
+      <BarChart data={rows} accessibilityLayer margin={{ left: 4, right: 4 }} barCategoryGap={rows.length > 31 ? 0 : "10%"}>
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="periodStart"
@@ -78,7 +78,8 @@ export function PeriodChart({
             />
           }
         />
-        <Bar dataKey="total" fill="var(--color-total)" radius={4} />
+        {/* Many days on a narrow screen give bars a few px wide: a 4 px corner radius hides them. */}
+        <Bar dataKey="total" fill="var(--color-total)" radius={rows.length > 31 ? 0 : 4} />
       </BarChart>
     </ChartContainer>
   );

@@ -211,7 +211,7 @@ function ReviewCard({ previewId, onLeave }: { previewId: string; onLeave: () => 
         {lines.data.pages.map((page, pi) => (
           <div key={pi} className="flex flex-col gap-2">
             <div className="rounded-lg border">
-              <Table className="text-sm">
+              <Table stack className="text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t("product")}</TableHead>
@@ -225,7 +225,7 @@ function ReviewCard({ previewId, onLeave }: { previewId: string; onLeave: () => 
                     const p = byId.get(line.productId);
                     return (
                       <TableRow key={line.productId}>
-                        <TableCell>
+                        <TableCell primary>
                           {p ? (
                             <span className="flex flex-col">
                               <span className="font-medium">{p.name}</span>
@@ -238,7 +238,7 @@ function ReviewCard({ previewId, onLeave }: { previewId: string; onLeave: () => 
                           )}
                         </TableCell>
                         <TableCell className="hidden text-right font-mono tabular-nums md:table-cell">{formatNumber(line.cancellationCreditQuantity)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell label={t("count")} className="text-right">
                           <Input
                             inputMode="numeric"
                             className="ml-auto w-28 text-right font-mono"
@@ -248,7 +248,7 @@ function ReviewCard({ previewId, onLeave }: { previewId: string; onLeave: () => 
                             onChange={(e) => setCounts((c) => ({ ...c, [line.productId]: e.target.value }))}
                           />
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell label={t("confirmed")} className="text-right">
                           <Badge variant={line.acknowledged ? "success" : "outline"}>{line.acknowledged ? t("confirmed") : t("pending")}</Badge>
                         </TableCell>
                       </TableRow>
@@ -310,7 +310,7 @@ function StockTable() {
           <RowsSkeleton rows={5} />
         ) : (
           <div className="rounded-lg border">
-            <Table className="text-sm">
+            <Table stack className="text-sm">
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("product")}</TableHead>
@@ -324,13 +324,13 @@ function StockTable() {
                   const stock = stocks[i]?.data;
                   return (
                     <TableRow key={p.id}>
-                      <TableCell>
+                      <TableCell primary>
                         <Link href={`/vendor/catalogue/${p.id}`} className="font-medium hover:underline">
                           {p.name}
                         </Link>
                         <div className="font-mono text-xs text-muted-foreground">{p.sku}</div>
                       </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">
+                      <TableCell label={t("available")} className="text-right font-mono tabular-nums">
                         {stock ? (stock.availableCount === null ? "—" : formatNumber(stock.availableCount)) : <Skeleton className="ml-auto h-4 w-10" />}
                       </TableCell>
                       <TableCell>
@@ -397,7 +397,7 @@ function EventsCard() {
           <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
           <div className="rounded-lg border">
-            <Table className="text-sm">
+            <Table stack className="text-sm">
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("when")}</TableHead>
@@ -411,12 +411,12 @@ function EventsCard() {
                 {rows.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell className="whitespace-nowrap">{formatDateTime(e.createdAt)}</TableCell>
-                    <TableCell>{names.get(e.productId) ?? "…"}</TableCell>
+                    <TableCell primary>{names.get(e.productId) ?? "…"}</TableCell>
                     <TableCell>
                       {t(`type.${e.type}`)}
                       {e.delta !== 0 && <span className="ml-2 font-mono tabular-nums">{`${e.delta > 0 ? "+" : ""}${formatNumber(e.delta)}`}</span>}
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatNumber(e.after)}</TableCell>
+                    <TableCell label={t("result")} className="text-right font-mono tabular-nums">{formatNumber(e.after)}</TableCell>
                     <TableCell className="hidden text-muted-foreground md:table-cell">{e.reason ?? (e.orderId ? t("fromOrder") : "")}</TableCell>
                   </TableRow>
                 ))}

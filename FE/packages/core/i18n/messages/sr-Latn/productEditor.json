@@ -30,7 +30,7 @@
   "quantityStep": "Korak porudžbine",
   "quantityHint": "Kupci naručuju najmanje minimum, a zatim u koracima (minimum 6, korak 6: 6, 12, 18…).",
   "pricing": "Cene",
-  "pricingDescription": "Neto cene bez PDV-a, u valuti {currency}. Dogovorene cene kupaca ih zamenjuju; jedna akcija može dodatno da snizi cenu.",
+  "pricingDescription": "Neto cene bez PDV‑a, u valuti {currency}. Dogovorene cene kupaca ih zamenjuju; jedna akcija može dodatno da snizi cenu.",
   "basePrice": "Osnovna cena",
   "basePriceHint": "Ostavite prazno dok proizvod nema cenu.",
   "tiers": "Količinske cene",

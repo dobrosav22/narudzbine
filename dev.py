@@ -196,7 +196,9 @@ def main():
     parser.add_argument("--hours", type=int, default=8, choices=range(1, 9), metavar="1..8",
                         help="backend lifetime (default 8, the harness maximum)")
     args = parser.parse_args()
-    sys.stdout.reconfigure(line_buffering=True)
+    # errors="replace": service log tails may hold characters the console/file encoding lacks
+    # (cp1252 when redirected on Windows); a print must never abort before the shutdown.
+    sys.stdout.reconfigure(line_buffering=True, errors="replace")
 
     ports = [API_PORT]
     if not args.no_web: ports += [BROWSER_PROXY_PORT, WEB_PORT]

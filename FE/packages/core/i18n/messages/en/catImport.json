@@ -3,7 +3,7 @@
   "subtitle": "Creates new inactive or active products in one step. Existing products are never changed.",
   "formatTitle": "File format",
   "formatDescription": "UTF-8 CSV with a header row. sku and name are required; the other columns are optional and can be in any order:",
-  "formatNotes": "unitId, categoryId and tagIds use IDs of your units, categories and tags (tagIds as a JSON list, e.g. [\"…\"]). basePrice is a net price like 12.50. activate is true or false; with stock tracking on, imported products can't be activated. Up to 1,000 rows and 5 MB; 3 checks per hour.",
+  "formatNotes": "unitId, categoryId and tagIds use IDs of your units, categories and tags; copy them on the Categories, tags & units page (tagIds as a JSON list, e.g. [\"…\"]). basePrice is a net price like 12.50. activate is true or false; with stock tracking on, imported products can't be activated. Up to 1,000 rows and 5 MB; 3 checks per hour.",
   "chooseFile": "Choose CSV file",
   "fileAria": "CSV file",
   "fileChosen": "{name} · {size}",

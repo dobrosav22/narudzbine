@@ -269,11 +269,6 @@ export function orderPartner(order: Pick<Order, 'vendor' | 'buyer'>, side: 'BUYE
   return side === 'BUYER' ? order.vendor : order.buyer;
 }
 
-/** Total ordered quantity across lines (mixed units; for "N items" summaries only). */
-export function orderItemCount(order: Pick<Order, 'lines'>): number {
-  return order.lines.reduce((n, l) => n + l.quantity, 0);
-}
-
 // ── Query keys ──────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 25;

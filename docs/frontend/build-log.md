@@ -752,3 +752,24 @@ What: Web and mobile checkout are now two steps on the same route, with a step i
 Why: The user found the review appended below the details form easy to miss without scrolling.
 Affects: Screens-and-flows checkout layout. Labels the e2e flow clicks ("Review order", "Order review", "Place order") are unchanged.
 
+
+### 2026-10-30 — Phone menu fixed; first QA exploration run
+
+What: The web phone menu now uses 44 px touch rows. `SidebarMenuButton` switches its `default` size to a new `touch` size (16 px text, 20 px icons) whenever the sidebar is the phone sheet. A new `SidebarClose` (44 px, label `nav.closeMenu`) sits in the sidebar header in place of the sheet's small built-in close button. The sheet closes after any navigation: nav links close it on click, and `CloseMobileMenuOnNavigation` handles other links. `e2e/screens.mjs` gained `VIEWPORT=WxH` (phone emulation below 768 px), `FULL_PAGE=1` and an overflow check. The first exploration run filled the [QA findings register](qa-findings.md) with QA-001..032.
+Why: User request (web-on-mobile and QA exploration plans, 2026-10-28). The menu was fixed before exploring so it wouldn't be logged on every screen.
+Affects: For phone-specific sizes in shared components, prefer a size variant chosen in the component (like `touch`) over per-screen overrides. The shared fixes the register points to (sidebar inset `min-w-0`, table cell wrapping, phone table pattern, button tap sizes) are not done yet.
+
+### 2026-10-30 — QA findings fixed: phone layout patterns, quantity input, wording
+
+What: Fixed QA-003..029, QA-032 and QA-033 from the [QA findings register](qa-findings.md) (QA-030/031 are backend gaps). Shared patterns, reuse them:
+- **Tables:** `<Table stack>` turns rows into wrapped blocks below md (header hidden). Cells pass `label` (shown before the value when stacked); the `primary` cell (product, name) takes the full row when stacked, and on wider screens takes the spare width and wraps long text. Every other cell stays `whitespace-nowrap`, so let long-text cells (SKUs, unit names) break explicitly. Used in the cart, checkout review, order lines, vendor catalogue, orders list and inventory; other tables scroll inside their own box.
+- **Layout:** `SidebarInset` has `min-w-0`; responsive grids start from `grid-cols-1`; detail headers give the title block `basis-56` so actions wrap below it; `SectionNav` starts left and scrolls the active tab into view.
+- **Touch targets:** `pointer-coarse:` sizes in the shared button, input, input-group, select, toggle, tabs and checkbox (about 44 px; compact `xs` 40 px). No per-screen overrides.
+- **Phone top bar:** section name, plus the buyer's cart button.
+- **Typed quantities:** core `readTypedQuantity` accepts plain digits only (a separator is ambiguous between languages and was being dropped: "6.5" became 66). Off-rule numbers move to the next valid quantity with a visible note. Web and mobile steppers share it.
+- **Large quantities:** placing an order with a line of 1,000 or more (`LARGE_QUANTITY`) asks for confirmation (user decision 2026-10-30).
+- **Wording** (user delegated the choice, 2026-10-30): Serbian "Kontrolna tabla" for the vendor dashboard and "paket" for plans everywhere; the taxonomy tab uses the page title. Orders and drafts lists count lines instead of adding quantities across units. Serbian "PDV‑a" uses a non-breaking hyphen (U+2011).
+- **i18n in shared UI:** dialog, sheet, sidebar and spinner labels are translated; components in `components/ui` may use `useTranslations`.
+- Also: translated 404 page, `color-scheme` per theme, a rate-limit wait time from `Retry-After`, copy-ID buttons on the taxonomy page for CSV import, and Enter adds a line in messages on touch screens.
+Why: User request to fix the 2026-10-30 QA findings.
+Affects: All web screens at phone and tablet width; mobile cart stepper, checkout and drafts summary; shared translations (en, sr-Latn).

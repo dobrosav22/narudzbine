@@ -63,13 +63,13 @@
     "byCountryDescription": "Svaka organizacija pripada jednoj državi; trgovina nikad ne prelazi granicu.",
     "metricColumn": "Broj",
     "total": "Ukupno",
-    "definitions": "Samo aktivne organizacije. Korisnici su aktivni, potvrđeni poslovni nalozi u aktivnim organizacijama. Veze su aktivni odnosi u kojima su obe strane aktivne. Zahtevi za plan na čekanju uključuju i suspendovane dobavljače.",
+    "definitions": "Samo aktivne organizacije. Korisnici su aktivni, potvrđeni poslovni nalozi u aktivnim organizacijama. Veze su aktivni odnosi u kojima su obe strane aktivne. Zahtevi za paket na čekanju uključuju i suspendovane dobavljače.",
     "metric": {
       "activeVendors": "Aktivni dobavljači",
       "activeBuyers": "Aktivni kupci",
       "activeBusinessUsers": "Aktivni poslovni korisnici",
       "activeConnections": "Aktivne veze",
-      "pendingPlanRequests": "Zahtevi za plan na čekanju"
+      "pendingPlanRequests": "Zahtevi za paket na čekanju"
     }
   },
   "organizations": {
@@ -99,10 +99,10 @@
     "immutable": "Vrsta i država se ne mogu menjati posle podešavanja. Za ispravku opozovite poziv i pošaljite novi.",
     "email": "Imejl vlasnika",
     "emailHint": "Budući vlasnik se prijavljuje ovom adresom.",
-    "plan": "Plan",
-    "choosePlan": "Izaberite plan",
-    "planHint": "Dobavljač počinje na ovom planu. Kupci nemaju plan.",
-    "planMismatch": "Poziv za ovu adresu, državu i vrstu već čeka sa drugim planom. Prvo ga opozovite, pa pošaljite novi.",
+    "plan": "Paket",
+    "choosePlan": "Izaberite paket",
+    "planHint": "Dobavljač počinje na ovom paketu. Kupci nemaju paket.",
+    "planMismatch": "Poziv za ovu adresu, državu i vrstu već čeka sa drugim paketom. Prvo ga opozovite, pa pošaljite novi.",
     "send": "Pošalji poziv",
     "sentTitle": "Poziv je u redu za slanje",
     "sentDescription": "Poziv za podešavanje za {email} čeka na slanje.",
@@ -172,7 +172,7 @@
     "tabs": {
       "overview": "Pregled",
       "members": "Članovi",
-      "plan": "Plan",
+      "plan": "Paket",
       "connections": "Veze",
       "support": "Uvid podrške"
     },
@@ -227,7 +227,7 @@
     "close": {
       "action": "Zatvori organizaciju",
       "title": "Trajno zatvoriti {name}?",
-      "description": "Raskida sve veze sa partnerima, poništava pozive i sesije i zamenjuje zahteve za plan na čekanju. Istorija ostaje sačuvana. Ovo se ne može poništiti. Sve porudžbine prvo moraju biti završene.",
+      "description": "Raskida sve veze sa partnerima, poništava pozive i sesije i zamenjuje zahteve za paket na čekanju. Istorija ostaje sačuvana. Ovo se ne može poništiti. Sve porudžbine prvo moraju biti završene.",
       "done": "{name} je zatvorena",
       "openOrders": "Ova organizacija još ima otvorene porudžbine. Moraju biti isporučene, odbijene ili otkazane pre zatvaranja."
     }
@@ -348,31 +348,31 @@
     "stale": "Slučaj je u međuvremenu izmenjen i ponovo učitan."
   },
   "vendorPlan": {
-    "closed": "Za zatvorene dobavljače nema upravljanja planom.",
-    "noPlanTitle": "Plan nije dodeljen",
-    "noPlanDescription": "Dobavljači dobijaju plan pri podešavanju. Ovaj dobavljač ga nema, a konzola ne može da dodeli prvi plan.",
-    "assigned": "Plan je promenjen na {plan}",
+    "closed": "Za zatvorene dobavljače nema upravljanja paketom.",
+    "noPlanTitle": "Paket nije dodeljen",
+    "noPlanDescription": "Dobavljači dobijaju paket pri podešavanju. Ovaj dobavljač ga nema, a konzola ne može da dodeli prvi paket.",
+    "assigned": "Paket je promenjen na {plan}",
     "retiredPinned": "Povučena verzija (zadržana)",
     "products": "Proizvodi (nearhivirani)",
     "buyers": "Aktivni kupci",
     "overLimit": "Preko limita",
     "atLimit": "Na limitu",
     "usageAria": "{label}: {used} od {limit}",
-    "changeTitle": "Promena plana",
+    "changeTitle": "Promena paketa",
     "changeDescription": "Primenjuje se odmah i zamenjuje zahtev ovog dobavljača koji čeka.",
-    "requestsLink": "Pogledaj zahteve za plan",
-    "newPlan": "Novi plan",
-    "choosePlan": "Izaberite plan",
-    "assign": "Promeni plan",
-    "wouldExceed": "Trenutna upotreba ne staje u ovaj plan",
+    "requestsLink": "Pogledaj zahteve za paket",
+    "newPlan": "Novi paket",
+    "choosePlan": "Izaberite paket",
+    "assign": "Promeni paket",
+    "wouldExceed": "Trenutna upotreba ne staje u ovaj paket",
     "over": {
-      "products": "Ima više proizvoda nego što plan dozvoljava.",
-      "buyers": "Ima više aktivnih kupaca nego što plan dozvoljava."
+      "products": "Ima više proizvoda nego što paket dozvoljava.",
+      "buyers": "Ima više aktivnih kupaca nego što paket dozvoljava."
     },
     "confirmTitle": "Prebaciti {vendor} na {plan}?",
     "confirmDescription": "Dobavljač odmah vidi nove limite. Razlog ostaje u privatnoj reviziji.",
-    "limitExceeded": "Trenutna upotreba dobavljača premašuje limite tog plana.",
-    "stale": "Plan dobavljača je u međuvremenu izmenjen i ponovo učitan. Proverite i pokušajte ponovo."
+    "limitExceeded": "Trenutna upotreba dobavljača premašuje limite tog paketa.",
+    "stale": "Paket dobavljača je u međuvremenu izmenjen i ponovo učitan. Proverite i pokušajte ponovo."
   },
   "connections": {
     "connectBuyer": "Poveži kupca",
@@ -386,8 +386,8 @@
     "connect": "Poveži",
     "connectWith": "Poveži sa {name}",
     "connected": "{a} i {b} su povezani",
-    "planLimit": "Dobavljač je dostigao limit aktivnih kupaca svog plana.",
-    "planRequired": "Dobavljač nema dodeljen plan.",
+    "planLimit": "Dobavljač je dostigao limit aktivnih kupaca svog paketa.",
+    "planRequired": "Dobavljač nema dodeljen paket.",
     "resultsTitle": "Veze obrađene ovde",
     "resultsDescription": "Konzola još ne može da prikaže postojeće veze; ovde se pojavljuju veze koje kreirate ili pronađete u ovoj kartici.",
     "noResults": "Još ništa.",
@@ -422,7 +422,7 @@
     "notAvailableTitle": "Nije dostupno",
     "notAvailable": "Uvid podrške je istekao ili ovaj zapis ne pripada ovoj organizaciji.",
     "startNew": "Započni novi uvid podrške",
-    "netNote": "Iznosi su neto, bez PDV-a.",
+    "netNote": "Iznosi su neto, bez PDV‑a.",
     "tabs": {
       "report": "Izveštaj",
       "orders": "Pretraga porudžbine",
@@ -552,8 +552,8 @@
     }
   },
   "planRequests": {
-    "title": "Zahtevi za plan",
-    "subtitle": "Dobavljači koji traže promenu plana",
+    "title": "Zahtevi za paket",
+    "subtitle": "Dobavljači koji traže promenu paketa",
     "state": "Status",
     "allStates": "Svi statusi",
     "stateName": {
@@ -567,8 +567,8 @@
     "nonePendingDescription": "Novi zahtevi dobavljača pojavljuju se ovde.",
     "none": "Nema zahteva",
     "vendor": "Dobavljač",
-    "requested": "Traženi plan",
-    "current": "Trenutni plan",
+    "requested": "Traženi paket",
+    "current": "Trenutni paket",
     "sent": "Poslat",
     "usage": "{products} proizvoda · {buyers} aktivnih kupaca",
     "wouldNotFit": "Upotreba ne staje",
@@ -576,13 +576,13 @@
     "reject": "Odbij",
     "approveTitle": "Prebaciti {vendor} na {plan}?",
     "rejectTitle": "Odbiti zahtev dobavljača {vendor} za {plan}?",
-    "approveDescription": "Plan se primenjuje odmah ako trenutna upotreba dobavljača staje u njega.",
-    "rejectDescription": "Dobavljač ostaje na trenutnom planu i može da pošalje novi zahtev.",
+    "approveDescription": "Paket se primenjuje odmah ako trenutna upotreba dobavljača staje u njega.",
+    "rejectDescription": "Dobavljač ostaje na trenutnom paketu i može da pošalje novi zahtev.",
     "vendorMessage": "Poruka dobavljaču",
     "vendorMessageHint": "Dobavljač vidi ovaj tekst. Neka bude poslovno primeren.",
-    "approved": "{vendor} je sada na planu {plan}",
+    "approved": "{vendor} je sada na paketu {plan}",
     "rejected": "Zahtev je odbijen",
-    "limitExceeded": "Trenutna upotreba dobavljača premašuje limite traženog plana.",
+    "limitExceeded": "Trenutna upotreba dobavljača premašuje limite traženog paketa.",
     "alreadyResolved": "Ovaj zahtev je već rešen ili povučen. Spisak je osvežen.",
     "stale": "Zahtev je u međuvremenu izmenjen. Spisak je osvežen."
   },

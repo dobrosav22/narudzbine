@@ -80,5 +80,9 @@
   "saveAsDraft": "Save as draft",
   "updateDraft": "Update saved draft",
   "savedForTeam": "Saved — an owner or admin can place it from Saved drafts.",
-  "noPayment": "No payment now — it's arranged directly with the vendor."
+  "noPayment": "No payment now — it's arranged directly with the vendor.",
+  "largeTitle": "Check these quantities",
+  "largeDescription": "These lines have unusually large quantities. Place the order anyway?",
+  "largeBack": "Go back",
+  "largeConfirm": "Yes, place order"
 }

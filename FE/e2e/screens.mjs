@@ -1,8 +1,9 @@
 // Visits every web screen as each role against the LOCAL synthetic backend and reports page
 // errors, console errors, failed API calls and rendered error states. Read-only: it only
-// navigates, it never submits forms.
+// navigates, it never submits forms. Also reports content wider than the viewport.
 //
-// Usage: node e2e/screens.mjs <ready.json>   (env BASE=https://localhost:3000, SHOTS=<dir>)
+// Usage: node e2e/screens.mjs <ready.json>   (env BASE=https://localhost:3000, SHOTS=<dir>,
+//        VIEWPORT=390x844 for a phone with touch, FULL_PAGE=1 for full-length screenshots)
 import { readFileSync, mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 
@@ -52,12 +53,36 @@ const ROLES = [
   { name: 'public', email: null, routes: ['/login', '/forgot-password', '/reset-password', '/setup', '/accept-invitation', '/email-change', '/recovery'] },
 ];
 
+// Below 768 px the app uses its mobile layout, so emulate a phone there (touch, mobile viewport).
+const [width, height] = (process.env.VIEWPORT ?? '1280x900').split('x').map(Number);
+const phone = width < 768;
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   headless: true,
-  args: ['--ignore-certificate-errors', '--window-size=1280,900'],
-  defaultViewport: { width: 1280, height: 900 },
+  args: ['--ignore-certificate-errors', `--window-size=${width},${height}`],
+  defaultViewport: { width, height, isMobile: phone, hasTouch: phone, deviceScaleFactor: phone ? 2 : 1 },
 });
+
+// Lists the innermost visible elements that stick out past the right edge, when the page is
+// wider than the viewport. Content inside its own scroll container doesn't widen the page.
+const overflowCheck = () => {
+  const root = document.documentElement;
+  if (root.scrollWidth <= root.clientWidth) return null;
+  const edge = root.clientWidth + 1;
+  const sticksOut = (e) => {
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && r.right > edge && getComputedStyle(e).visibility !== 'hidden';
+  };
+  const offenders = [...document.body.querySelectorAll('*')]
+    .filter((e) => sticksOut(e) && ![...e.children].some(sticksOut))
+    .slice(0, 5)
+    .map((e) => {
+      const cls = typeof e.className === 'string' ? e.className.split(' ').slice(0, 3).join('.') : '';
+      const text = (e.textContent ?? '').trim().slice(0, 40);
+      return `${e.tagName.toLowerCase()}${cls ? '.' + cls : ''} right=${Math.round(e.getBoundingClientRect().right)}${text ? ` "${text}"` : ''}`;
+    });
+  return `page ${root.scrollWidth}px wide in a ${root.clientWidth}px viewport: ${offenders.join('; ')}`;
+};
 const report = [];
 let problems = 0;
 
@@ -102,7 +127,9 @@ for (const role of ROLES) {
         [...document.querySelectorAll('[data-slot=alert][data-variant=destructive], [role=alert][data-variant=destructive]')].map((e) => e.textContent.trim()).filter(Boolean).join(' | '),
       );
       if (alert) note(`alert: ${alert.slice(0, 200)}`);
-      if (SHOTS) await page.screenshot({ path: `${SHOTS}/${role.name}${route.replace(/[^a-z0-9]+/gi, '_')}.png` });
+      const overflow = await page.evaluate(overflowCheck);
+      if (overflow) note(`overflow: ${overflow}`);
+      if (SHOTS) await page.screenshot({ path: `${SHOTS}/${role.name}${route.replace(/[^a-z0-9]+/gi, '_')}.png`, fullPage: Boolean(process.env.FULL_PAGE) });
     } catch (e) {
       note(`navigation: ${e.message.split('\n')[0]}`);
     }

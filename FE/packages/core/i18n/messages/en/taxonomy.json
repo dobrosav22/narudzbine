@@ -39,5 +39,8 @@
       "deleteTitle": "Delete unit “{name}”?",
       "deleteNote": "Only units no product uses can be deleted."
     }
-  }
+  },
+  "copyId": "Copy the ID of {name}",
+  "idCopied": "ID of {name} copied",
+  "copyFailed": "Couldn't copy. The ID is {id}"
 }

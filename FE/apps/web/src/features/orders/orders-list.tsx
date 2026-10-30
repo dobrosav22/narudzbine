@@ -12,7 +12,6 @@ import {
   isValidDateRange,
   localToday,
   orderDateRange,
-  orderItemCount,
   orderPartner,
   ORDER_DATE_PRESETS,
   ORDER_STATES,
@@ -105,7 +104,23 @@ export function OrdersList({ side, basePath, emptyAction }: { side: "BUYER" | "V
             </SelectGroup>
           </SelectContent>
         </Select>
-        <ToggleGroup type="single" variant="outline" value={range} aria-label={t("dateRange")} onValueChange={pickRange}>
+        {/* Phones get a select: the joined button group is wider than the screen. */}
+        <Select value={range} onValueChange={pickRange}>
+          <SelectTrigger className="w-56 sm:hidden" aria-label={t("dateRange")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {ORDER_DATE_PRESETS.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {t(`range.${p}`)}
+                </SelectItem>
+              ))}
+              <SelectItem value="custom">{t("range.custom")}</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <ToggleGroup type="single" variant="outline" className="max-sm:hidden" value={range} aria-label={t("dateRange")} onValueChange={pickRange}>
           {ORDER_DATE_PRESETS.map((p) => (
             <ToggleGroupItem key={p} value={p}>
               {t(`range.${p}`)}
@@ -155,14 +170,14 @@ export function OrdersList({ side, basePath, emptyAction }: { side: "BUYER" | "V
       ) : (
         <>
           <div className="rounded-lg border">
-            <Table className="text-sm">
+            <Table stack className="text-sm">
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("order")}</TableHead>
                   <TableHead>{t("submitted")}</TableHead>
                   <TableHead>{partnerLabel}</TableHead>
                   <TableHead className="hidden lg:table-cell">{t("deliverTo")}</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">{t("quantity")}</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">{t("items")}</TableHead>
                   <TableHead className="text-right">{t("total")}</TableHead>
                   <TableHead className="text-right">{t("state")}</TableHead>
                 </TableRow>
@@ -170,16 +185,17 @@ export function OrdersList({ side, basePath, emptyAction }: { side: "BUYER" | "V
               <TableBody>
                 {rows.map((o) => (
                   <TableRow key={o.id} className="cursor-pointer" onClick={() => router.push(`${basePath}/${o.id}`)}>
-                    <TableCell>
+                    {/* Full row on phones only; on wider screens the number keeps its natural width. */}
+                    <TableCell primary className="w-auto min-w-0">
                       <Link href={`${basePath}/${o.id}`} className="font-mono font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
                         {o.number}
                       </Link>
                     </TableCell>
-                    <TableCell>{formatDate(o.submittedAt)}</TableCell>
-                    <TableCell>{orderPartner(o, side).displayName}</TableCell>
+                    <TableCell label={t("submitted")}>{formatDate(o.submittedAt)}</TableCell>
+                    <TableCell label={partnerLabel}>{orderPartner(o, side).displayName}</TableCell>
                     <TableCell className="hidden lg:table-cell">{`${o.deliveryAddress.line1}, ${o.deliveryAddress.city}`}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-mono tabular-nums">{formatNumber(orderItemCount(o))}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatMoney(o.goodsTotal, o.currency)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-mono tabular-nums">{formatNumber(o.lines.length)}</TableCell>
+                    <TableCell label={t("total")} className="text-right font-mono tabular-nums">{formatMoney(o.goodsTotal, o.currency)}</TableCell>
                     <TableCell className="text-right">
                       <OrderStateBadge state={o.state} stageName={o.stageName} />
                     </TableCell>

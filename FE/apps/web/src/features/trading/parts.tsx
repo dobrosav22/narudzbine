@@ -98,7 +98,7 @@ export function PartnerDetailsCard({ partner }: { partner: Partner }) {
         <CardTitle>{t("title")}</CardTitle>
         {partner.relationshipState === "DISCONNECTED" && <CardDescription>{t("frozen")}</CardDescription>}
       </CardHeader>
-      <CardContent className="grid gap-6 sm:grid-cols-2">
+      <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
           {rows.map(([label, value]) => (
             <div key={label} className="contents">

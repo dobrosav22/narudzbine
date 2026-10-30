@@ -30,8 +30,8 @@ Serbian (`sr-Latn`) labels are often longer than English ones. Check every scree
 
 1. **Start the stack**: `python dev.py --mobile none` from the repository root (Docker must be running). Log in with the synthetic accounts the script prints.
 2. **Chrome DevTools device mode** (Ctrl+Shift+M) at the sizes above. Turn on touch simulation. Also try a real phone browser on the same network only if the stack is made reachable; by default everything listens on loopback.
-3. **Screenshot sweep**: `FE/e2e/screens.mjs` opens every route for every role and saves screenshots with `SHOTS=<dir>`. It currently uses Puppeteer's default 800 × 600 viewport. The first task of this work is adding a `VIEWPORT=390x844` option (with `isMobile`/`hasTouch`), so one run captures every route at phone width. Save screenshots under `.dev/` (gitignored), never in the repository.
-4. **Automatic overflow check**: in the same script, after each route loads, report any element wider than the viewport. A good test is `document.documentElement.scrollWidth > innerWidth`, then list elements whose `getBoundingClientRect().right` is past the viewport. Report it like the existing console-error findings.
+3. **Screenshot sweep**: `FE/e2e/screens.mjs` opens every route for every role and saves screenshots with `SHOTS=<dir>`. It defaults to 1280 × 900. `VIEWPORT=390x844` runs it at phone size, with touch and a mobile viewport below 768 px, and `FULL_PAGE=1` takes full-length screenshots. Save screenshots under `.dev/` (gitignored), never in the repository.
+4. **Automatic overflow check**: the same script reports any route where the page is wider than the viewport, listing the innermost elements that stick out past the right edge. It reports them like console errors. It only sees the state the sweep reaches, so a filled cart or a long product name still needs a manual check.
 5. **Walk the flows by hand**, not just the routes. Open every dialog, sheet, dropdown, select, date picker, tooltip and toast. Fill forms with the on-screen keyboard in mind, and open the longest content you can find (long product names, many order lines, long notes, large money values).
 
 ## What to look for

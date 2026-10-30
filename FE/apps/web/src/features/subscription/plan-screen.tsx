@@ -89,7 +89,7 @@ export function PlanScreen() {
           </CardTitle>
           <CardDescription>{t("currentDescription")}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-6 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Meter plan={current} kind="products" />
           <Meter plan={current} kind="buyers" />
         </CardContent>
@@ -97,7 +97,7 @@ export function PlanScreen() {
 
       {pending && <PendingRequest request={pending} planName={nameOf(pending.requestedPlanRevisionId)} />}
 
-      <div className="grid gap-4 md:grid-cols-3" role="list" aria-label={t("plans")}>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3" role="list" aria-label={t("plans")}>
         {offered.map((p) => {
           const isCurrent = p.id === current.plan.id;
           return (

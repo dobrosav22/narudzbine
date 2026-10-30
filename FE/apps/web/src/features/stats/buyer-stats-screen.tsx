@@ -47,7 +47,7 @@ export function BuyerStatsScreen() {
         <SummarySkeleton />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StatCard label={t("spend")} value={formatMoney(summary.data.goodsTotal, currency)} footer={t("netNote")} />
             <StatCard label={t("ordersCol")} value={formatNumber(summary.data.orderCount)} />
             <StatCard label={t("averageOrder")} value={orderAverage(summary.data.goodsTotal, summary.data.orderCount, currency)} />

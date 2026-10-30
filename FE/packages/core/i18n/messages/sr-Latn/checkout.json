@@ -70,7 +70,7 @@
   "deliverTo": "Isporuka na",
   "orderTotal": "Ukupno za porudžbinu",
   "goodsTotal": "Vrednost robe",
-  "netNote": "Svi iznosi su bez PDV-a.",
+  "netNote": "Svi iznosi su bez PDV‑a.",
   "reviewFirst": "{count, plural, one {{countText} proizvod u korpi.} few {{countText} proizvoda u korpi.} other {{countText} proizvoda u korpi.}} Pregledajte porudžbinu da vidite tačne cene.",
   "review": "Pregledaj porudžbinu",
   "reviewAgain": "Pregledaj ponovo",
@@ -80,5 +80,9 @@
   "saveAsDraft": "Sačuvaj kao nacrt",
   "updateDraft": "Ažuriraj sačuvani nacrt",
   "savedForTeam": "Sačuvano — vlasnik ili administrator može da je pošalje iz sačuvanih nacrta.",
-  "noPayment": "Bez plaćanja sada — dogovara se direktno sa dobavljačem."
+  "noPayment": "Bez plaćanja sada — dogovara se direktno sa dobavljačem.",
+  "largeTitle": "Proverite količine",
+  "largeDescription": "Ove stavke imaju neuobičajeno velike količine. Ipak poslati porudžbinu?",
+  "largeBack": "Nazad",
+  "largeConfirm": "Da, pošalji porudžbinu"
 }

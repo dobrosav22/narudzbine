@@ -30,6 +30,7 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 import { useErrorText } from "@/lib/i18n";
 import { initials } from "@/lib/session";
 import { useOrderMessages, useSendOrderMessage } from "./queries";
@@ -162,14 +163,15 @@ export function OrderThread({
                   aria-invalid={tooLong || undefined}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
+                    // Touch keyboards have no Shift+Enter: there Enter adds a line and the button sends (QA-011).
+                    if (e.key === "Enter" && !e.shiftKey && !window.matchMedia("(pointer: coarse)").matches) {
                       e.preventDefault();
                       submit();
                     }
                   }}
                 />
                 <InputGroupAddon align="block-end">
-                  <span className="text-xs text-muted-foreground">
+                  <span className={cn("text-xs text-muted-foreground", !tooLong && "pointer-coarse:hidden")}>
                     {tooLong ? t("tooLong", { max: MESSAGE_MAX }) : t("hint")}
                   </span>
                   <InputGroupButton type="submit" size="sm" className="ml-auto" disabled={!body || tooLong || send.isPending}>

@@ -7,7 +7,7 @@
   "emptyDescription": "Sačuvajte korpu kao nacrt da biste je podelili sa timom ili završili kasnije.",
   "disconnectedVendor": "Dobavljač više nije povezan",
   "notOrderable": "Ne može da se naruči",
-  "summary": "{count, plural, one {{countText} proizvod} few {{countText} proizvoda} other {{countText} proizvoda}} · {units} kom. · {location}",
+  "summary": "{count, plural, one {{countText} proizvod} few {{countText} proizvoda} other {{countText} proizvoda}} · {location}",
   "updated": "Poslednji put sačuvano {when}",
   "openInCart": "Otvori u korpi",
   "reviewAndSubmit": "Pregledaj i pošalji",

@@ -67,7 +67,7 @@ export function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </Field>
-            <Button type="submit" disabled={login.isPending || !email || !password}>
+            <Button type="submit" disabled={login.isPending}>
               {login.isPending && <Spinner data-icon="inline-start" />}
               {t("login.submit")}
             </Button>

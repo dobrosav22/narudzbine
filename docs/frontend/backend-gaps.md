@@ -50,6 +50,12 @@ Status words: **Fixed** = changed in this repository with a test. **Open** = not
 - Handoff text says `DELETE /organization/ownership-transfers/{id}` has no query; OpenAPI requires `expectedRevision`. The client follows OpenAPI.
 - Agreed-price confirmation after reconnection is vendor-only (buyers get 404), although a buyer-side reconfirmation was expected; the vendor's buyer detail holds the review/confirm step and the buyer sees a notice.
 
+Found by the 2026-10-30 [QA exploration](qa-findings.md):
+
+- **C-QA-1. No maximum order quantity** ([QA-016](qa-findings.md#qa-016--no-upper-limit-on-order-quantity)). A review of 1,000,000,000 kg (18,500,000,007.00 KM) is priced and ready to submit. R-API-011 leaves safe integer/value maxima open. The UI has no limit either; this needs a product decision.
+- **C-QA-2. The local harness can't follow invitation links** ([QA-030](qa-findings.md#qa-030--no-local-way-to-accept-invitations-so-staff-and-admin-roles-cant-be-tested)). Email delivery is off and nothing records the links, so staff and admin members, the staff submission restriction, setup and an empty organization can't be exercised locally. One option: the synthetic email stand-in keeps the latest links for the loopback-only harness.
+- **C-QA-3. Wrong problem title on catalogue validation** ([QA-031](qa-findings.md#qa-031--catalogue-validation-errors-carry-an-authentication-title)). `POST /catalogue/products` with an over-long SKU returns 422 `VALIDATION_FAILED` titled "Authentication request could not be completed". The apps show text by `code`, so users don't see it.
+
 ## 5. Deployment and environment prerequisites
 
 | # | Item | Impact |

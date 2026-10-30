@@ -82,7 +82,7 @@ function OrderDetail({
             <ArrowLeftIcon />
           </Link>
         </Button>
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 basis-56 flex-col">
           <h1 className="flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight">
             {t.rich("heading", { number: order.number, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
             <OrderStateBadge state={order.state} stageName={order.stageName} />
@@ -114,7 +114,7 @@ function OrderDetail({
 
       {actions(order, viewer)}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>{t("items")}</CardTitle>

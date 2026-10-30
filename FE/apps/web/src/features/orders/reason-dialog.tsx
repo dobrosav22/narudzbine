@@ -65,7 +65,8 @@ export function ReasonDialog({
           <Field data-invalid={length > REASON_MAX || undefined}>
             <FieldLabel htmlFor="order-reason">{t("label")}</FieldLabel>
             <Textarea id="order-reason" rows={4} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus required />
-            <FieldDescription>{t("count", { count: length, max: REASON_MAX })}</FieldDescription>
+            {/* Empty: say why the confirm button is disabled. */}
+            <FieldDescription>{length === 0 ? t("required", { max: REASON_MAX }) : t("count", { count: length, max: REASON_MAX })}</FieldDescription>
           </Field>
           <ActionError error={error} />
           <DialogFooter>

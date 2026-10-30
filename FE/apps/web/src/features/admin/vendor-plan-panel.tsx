@@ -85,7 +85,7 @@ function PlanCards({ org, current, plans, onStale }: { org: Organization; curren
           </CardTitle>
           <CardDescription>{planText.limits(current.plan)}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Usage label={t("products")} used={current.nonArchivedProductCount} limit={current.plan.productLimit} />
           <Usage label={t("buyers")} used={current.activeBuyerCount} limit={current.plan.activeBuyerLimit} />
         </CardContent>

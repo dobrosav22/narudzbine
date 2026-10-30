@@ -118,7 +118,7 @@ function CompanyForm({ org, canEdit, onReload }: { org: Organization; canEdit: b
             ) : (
               save.error && <FormError error={save.error} />
             )}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field data-invalid={!!shown("displayName") || undefined}>
                 <FieldLabel htmlFor="org-display">{t("company.displayName")}</FieldLabel>
                 <Input id="org-display" disabled={!canEdit} value={draft.displayName} onChange={(e) => setDraft({ ...draft, displayName: e.target.value })} />
@@ -228,7 +228,7 @@ function IdentityCard({ org }: { org: Organization }) {
         <CardDescription>{t("company.identityHint")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           {rows.map(([label, value]) => (
             <div key={label} className="flex flex-col gap-0.5">
               <dt className="text-muted-foreground">{label}</dt>

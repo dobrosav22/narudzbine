@@ -11,6 +11,8 @@ const KNOWN = new Set(Object.keys(en.problems.codes));
  */
 export function problemMsg(error: unknown): Msg {
   if (isApiError(error)) {
+    // Rate limits say how long to wait when the backend tells us (Retry-After), QA-027.
+    if (error.status === 429 && error.retryAfter !== null) return msg('problems.rateLimitedWait', { minutes: Math.max(1, Math.ceil(error.retryAfter / 60)) });
     if (KNOWN.has(error.code)) return msg(`problems.codes.${error.code}`);
     const status = statusBucket(error);
     return msg(`problems.status.${status}`);

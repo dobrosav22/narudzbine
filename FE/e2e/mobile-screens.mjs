@@ -15,12 +15,19 @@ const ready = JSON.parse(raw.slice(raw.indexOf('{')));
 // COUNTRY=BA uses the Bosnian fixtures (fresh login budget, BAM/Sarajevo formatting).
 const rs = ready.fixtures.find((f) => f.country === (process.env.COUNTRY ?? 'RS'));
 
+// Fails with a clear message (and the backend's Retry-After) instead of a TypeError when the
+// login or read budget is used up; see e2e testing "Backend limits the checks respect".
+async function checked(response, what) {
+  if (response.ok) return response.json();
+  const wait = response.headers.get('Retry-After');
+  throw new Error(`${what}: HTTP ${response.status}${wait ? `, retry after ${wait} s` : ''}${response.status === 429 ? ' (rate limited: wait, or restart the backend)' : ''}`);
+}
 async function first(email, path) {
-  const login = await (await fetch(`${API}/auth/login`, {
+  const login = await checked(await fetch(`${API}/auth/login`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password: PASSWORD, transport: 'NATIVE', deviceLabel: 'Mobile screen check' }),
-  })).json();
-  return (await (await fetch(API + path, { headers: { Authorization: `Bearer ${login.bearerToken}` } })).json()).items[0];
+  }), 'login');
+  return (await checked(await fetch(API + path, { headers: { Authorization: `Bearer ${login.bearerToken}` } }), `GET ${path}`)).items[0];
 }
 const order = (await first(rs.vendorEmail, '/orders?size=1')).id;
 const product = (await first(rs.vendorEmail, '/catalogue/products?size=1&state=ACTIVE')).id;
@@ -54,7 +61,8 @@ for (const role of ROLES) {
   await page.type('[aria-label="Email"]', role.email);
   await page.type('[aria-label="Password"]', PASSWORD);
   await page.locator('::-p-xpath(//*[@role="button"][normalize-space(.)="Log in"])').click();
-  await page.waitForFunction(() => !location.pathname.startsWith('/login'), { timeout: 30000 });
+  const left = await page.waitForFunction(() => !location.pathname.startsWith('/login'), { timeout: 30000 }).then(() => true, () => false);
+  if (!left) throw new Error(`${role.name} login did not leave /login: ${(await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(0, 200)}`);
   for (const route of role.routes) {
     current = route;
     issues.set(route, []);

@@ -12,6 +12,7 @@ import {
   isValidQuantity,
   offerStockStatus,
   priceSource,
+  readTypedQuantity,
   snapQuantity,
   stepQuantity,
   type Currency,
@@ -146,46 +147,69 @@ export function FavoriteButton({ offer, onError }: { offer: Offer; onError?: (me
   );
 }
 
-/** −/+ producing only valid quantities (minimum, then whole steps); typed input snaps up on blur. */
+/**
+ * −/+ producing only valid quantities (minimum, then whole steps). Typed input is committed on
+ * blur/submit: anything but a whole number is refused with a message (never silently stripped),
+ * and a number off the rule moves up to the next valid quantity with a note saying why.
+ */
 export function QuantityStepper({ value, rule, onChange, label }: { value: number; rule: QuantityRule; onChange: (v: number) => void; label: string }) {
   const c = useTokenColors();
   const t = useT('product');
   const [draft, setDraft] = useState<string | null>(null);
+  const [note, setNote] = useState<{ error: boolean; text: string } | null>(null);
   const commit = () => {
     if (draft === null) return;
-    const next = snapQuantity(Number(draft), rule);
+    const typed = readTypedQuantity(draft, rule);
     setDraft(null);
-    if (next !== value) onChange(next);
+    if (typed.kind === 'EMPTY') return setNote(null);
+    if (typed.kind === 'NOT_WHOLE') return setNote({ error: true, text: t('quantityWhole') });
+    const values = { qty: formatNumber(typed.quantity), min: formatNumber(rule.minimumQuantity), step: formatNumber(rule.quantityStep) };
+    setNote(typed.adjusted ? { error: false, text: rule.quantityStep > 1 ? t('quantityAdjustedStep', values) : t('quantityAdjustedMin', values) } : null);
+    if (typed.quantity !== value) onChange(typed.quantity);
+  };
+  const step = (direction: 1 | -1) => {
+    setNote(null);
+    onChange(stepQuantity(value, rule, direction));
   };
   const atMinimum = value <= rule.minimumQuantity;
   return (
-    <View className={`h-11 flex-row items-center rounded-lg border bg-background ${isValidQuantity(value, rule) ? 'border-input' : 'border-destructive'}`}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('decrease', { label })}
-        disabled={atMinimum}
-        onPress={() => onChange(stepQuantity(value, rule, -1))}
-        className={`h-full w-10 items-center justify-center ${atMinimum ? 'opacity-40' : ''}`}>
-        <Minus size={16} color={c.foreground} />
-      </Pressable>
-      <TextInput
-        accessibilityLabel={label}
-        keyboardType="number-pad"
-        maxLength={10}
-        value={draft ?? String(value)}
-        onChangeText={(v) => setDraft(v.replace(/[^\d]/g, ''))}
-        onBlur={commit}
-        onSubmitEditing={commit}
-        selectionColor={c.primary}
-        className="h-full min-w-12 px-1 text-center font-mono text-base text-foreground"
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('increase', { label })}
-        onPress={() => onChange(stepQuantity(value, rule, 1))}
-        className="h-full w-10 items-center justify-center">
-        <Plus size={16} color={c.foreground} />
-      </Pressable>
+    <View className="gap-1">
+      <View className={`h-11 flex-row items-center rounded-lg border bg-background ${isValidQuantity(value, rule) && !note?.error ? 'border-input' : 'border-destructive'}`}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('decrease', { label })}
+          disabled={atMinimum}
+          onPress={() => step(-1)}
+          className={`h-full w-10 items-center justify-center ${atMinimum ? 'opacity-40' : ''}`}>
+          <Minus size={16} color={c.foreground} />
+        </Pressable>
+        <TextInput
+          accessibilityLabel={label}
+          keyboardType="number-pad"
+          maxLength={12}
+          value={draft ?? String(value)}
+          onChangeText={(v) => {
+            setNote(null);
+            setDraft(v);
+          }}
+          onBlur={commit}
+          onSubmitEditing={commit}
+          selectionColor={c.primary}
+          className="h-full min-w-12 px-1 text-center font-mono text-base text-foreground"
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('increase', { label })}
+          onPress={() => step(1)}
+          className="h-full w-10 items-center justify-center">
+          <Plus size={16} color={c.foreground} />
+        </Pressable>
+      </View>
+      {note && (
+        <AppText accessibilityLiveRegion="polite" className={`text-xs ${note.error ? 'text-destructive' : 'text-muted-foreground'}`}>
+          {note.text}
+        </AppText>
+      )}
     </View>
   );
 }

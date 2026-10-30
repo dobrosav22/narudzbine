@@ -16,6 +16,7 @@ import {
   formatNumber,
   IncompleteIntentError,
   isApiError,
+  isLargeQuantity,
   isUncertainOutcome,
   offerKeys,
   orderKeys,
@@ -31,6 +32,16 @@ import {
 } from "@repo/core";
 import { EmptyState, ErrorState, RowsSkeleton } from "@/components/query-states";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,6 +130,7 @@ export function CheckoutScreen() {
   const [changed, setChanged] = useState<Set<string>>(new Set());
   const [unavailable, setUnavailable] = useState<UnavailableReviewLine[]>([]);
   const [busy, setBusy] = useState<"review" | "submit" | null>(null);
+  const [confirmLarge, setConfirmLarge] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [uncertain, setUncertain] = useState(false);
   const [conflict, setConflict] = useState(false);
@@ -162,6 +174,7 @@ export function CheckoutScreen() {
   const contactValid = !contactOn || (contact.name.trim() !== "" && contact.phone.trim().length >= 3);
   const overrideValid = state.instructionsMode !== "OVERRIDE" || !!state.instructionsOverride?.trim();
   const expired = reviewed ? Date.parse(reviewed.review.expiresAt) <= now : false;
+  const largeLines = reviewed ? reviewed.review.lines.filter((l) => isLargeQuantity(l.quantity)) : [];
 
   const succeeded = (order: Order) => {
     void qc.invalidateQueries({ queryKey: orderKeys.all });
@@ -269,7 +282,8 @@ export function CheckoutScreen() {
 
       {state.draft && <p className="text-sm text-muted-foreground">{t("viaDraft")}</p>}
 
-      {errorDescription && (
+      {/* An uncertain outcome is already explained by the pending alert above, with its action (QA-026). */}
+      {errorDescription && !(uncertain && pending) && (
         <Alert variant={uncertain ? "default" : "destructive"}>
           <TriangleAlertIcon />
           <AlertTitle>{uncertain ? t("uncertainTitle") : termsChange(error) ? t("termsChangedTitle") : t("problemTitle")}</AlertTitle>
@@ -287,7 +301,7 @@ export function CheckoutScreen() {
         </Alert>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {!reviewed ? (
           <div className="flex flex-col gap-6 lg:col-span-2">
             <Card>
@@ -323,7 +337,7 @@ export function CheckoutScreen() {
                     </FieldDescription>
                   )}
                   {contactOn && (
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <Field>
                         <FieldLabel htmlFor="contact-name">{t("contactName")}</FieldLabel>
                         <Input id="contact-name" maxLength={100} value={contact.name} aria-invalid={!contact.name.trim() || undefined} onChange={(e) => { setContact({ ...contact, name: e.target.value }); setReviewed(null); }} />
@@ -394,7 +408,7 @@ export function CheckoutScreen() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table className="text-sm">
+                <Table stack className="text-sm">
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t("product")}</TableHead>
@@ -406,7 +420,7 @@ export function CheckoutScreen() {
                   <TableBody>
                     {reviewed.review.lines.map((l) => (
                       <TableRow key={l.productId} data-state={changed.has(l.productId) ? "selected" : undefined}>
-                        <TableCell>
+                        <TableCell primary>
                           <div className="flex flex-col gap-0.5">
                             <span className="font-medium">{l.name}</span>
                             <span className="text-xs text-muted-foreground">
@@ -420,16 +434,16 @@ export function CheckoutScreen() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
+                        <TableCell label={t("qty")} className="text-right font-mono tabular-nums">
                           {formatNumber(l.quantity)} {l.unitName}
                         </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
+                        <TableCell label={t("unitPrice")} className="text-right font-mono tabular-nums">
                           {formatMoney(l.price.finalUnitPrice, reviewed.review.currency)}
                           {l.price.finalUnitPrice !== l.price.baseUnitPrice && (
                             <span className="block text-xs text-muted-foreground line-through">{formatMoney(l.price.baseUnitPrice, reviewed.review.currency)}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">{formatMoney(l.price.lineTotal, reviewed.review.currency)}</TableCell>
+                        <TableCell label={t("lineTotal")} className="text-right font-mono tabular-nums">{formatMoney(l.price.lineTotal, reviewed.review.currency)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -447,7 +461,7 @@ export function CheckoutScreen() {
                 </CardAction>
               </CardHeader>
               <CardContent>
-                <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="text-muted-foreground">{t("deliverTo")}</dt>
                     <dd>{formatAddress(reviewed.review.deliveryAddress)}</dd>
@@ -505,7 +519,11 @@ export function CheckoutScreen() {
               </Button>
             )}
             {reviewed && !expired && canSubmit && (
-              <Button disabled={busy !== null || !!pending} onClick={() => void submit(false)}>
+              <Button
+                disabled={busy !== null || !!pending}
+                // Unusually large quantities are confirmed first (QA-016); the backend sets no maximum.
+                onClick={() => (largeLines.length > 0 ? setConfirmLarge(true) : void submit(false))}
+              >
                 {busy === "submit" && <Spinner data-icon="inline-start" />}
                 {changed.size > 0 ? t("confirmChanged") : t("placeOrder")}
               </Button>
@@ -539,6 +557,29 @@ export function CheckoutScreen() {
       </div>
 
       <DraftConflictDialog scope={scope} open={conflict} onOpenChange={setConflict} onResolved={() => setReviewed(null)} />
+
+      <AlertDialog open={confirmLarge} onOpenChange={setConfirmLarge}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("largeTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("largeDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="flex flex-col gap-1 text-sm">
+            {largeLines.map((l) => (
+              <li key={l.productId} className="flex justify-between gap-3">
+                <span className="min-w-0 [overflow-wrap:anywhere]">{l.name}</span>
+                <span className="shrink-0 font-mono font-medium tabular-nums">
+                  {formatNumber(l.quantity)} {l.unitName}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("largeBack")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void submit(false)}>{t("largeConfirm")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

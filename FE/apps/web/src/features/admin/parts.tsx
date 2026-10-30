@@ -43,7 +43,7 @@ export function PageHeader({
           </Link>
         </Button>
       )}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 flex-1 basis-56 flex-col gap-1">
         <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight break-words">
           {title}
           {badges}
@@ -372,7 +372,7 @@ function ReasonForm({
 /** Label/value rows for detail cards. */
 export function DetailList({ items }: { items: { label: string; value: React.ReactNode }[] }) {
   return (
-    <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[minmax(10rem,auto)_1fr]">
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-[minmax(10rem,auto)_1fr]">
       {items.map((item) => (
         <div key={item.label} className="contents">
           <dt className="text-muted-foreground">{item.label}</dt>

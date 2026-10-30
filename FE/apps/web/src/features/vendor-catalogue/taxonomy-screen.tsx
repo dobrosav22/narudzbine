@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, LockIcon, PencilIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, LockIcon, PencilIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { isApiError, TAXONOMY_NAME_MAX, uuidv7, type TaxonomyItem, type TaxonomyKind } from "@repo/core";
@@ -37,7 +37,7 @@ export function TaxonomyScreen() {
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </div>
       <CatalogueNav />
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <TaxonomyList kind="categories" />
         <TaxonomyList kind="tags" />
         <TaxonomyList kind="units" />
@@ -239,6 +239,20 @@ function TaxonomyRow({ kind, item, onDelete }: { kind: TaxonomyKind; item: Taxon
         )}
       </span>
       <span className="flex gap-1">
+        {/* CSV import takes unit, category and tag IDs (QA-017). */}
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label={t("copyId", { name: item.name })}
+          onClick={() => {
+            // Without clipboard access, show the ID so it can still be copied by hand.
+            const failed = () => toast.error(t("copyFailed", { id: item.id }));
+            if (!navigator.clipboard) return failed();
+            void navigator.clipboard.writeText(item.id).then(() => toast.success(t("idCopied", { name: item.name })), failed);
+          }}
+        >
+          <CopyIcon />
+        </Button>
         {!frozen && (
           <Button
             size="icon-sm"

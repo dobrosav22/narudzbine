@@ -49,7 +49,7 @@ export function BuyerVendorDetailScreen({ relationshipId }: { relationshipId: st
             <ArrowLeftIcon />
           </Link>
         </Button>
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 basis-56 flex-col">
           <h1 className="flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight">
             {partner.isPending ? " " : name}
             <RelationshipStateBadge state={r.state} />

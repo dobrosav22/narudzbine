@@ -1,5 +1,6 @@
 {
   "mainNavigation": "Main navigation",
+  "closeMenu": "Close menu",
   "dashboard": "Dashboard",
   "catalogue": "Catalogue",
   "orders": "Orders",
@@ -17,5 +18,7 @@
   "organizations": "Organizations",
   "planRequests": "Plan requests",
   "audit": "Audit log",
-  "account": "Account"
+  "account": "Account",
+  "menu": "Menu",
+  "toggleMenu": "Show or hide the menu"
 }

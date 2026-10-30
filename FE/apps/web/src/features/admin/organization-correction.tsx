@@ -85,7 +85,7 @@ function CorrectionForm({ org, onClose }: { org: Organization; onClose: () => vo
         <DialogDescription>{t("description")}</DialogDescription>
       </DialogHeader>
       <FieldGroup>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {FIELDS.map((f) => {
             const code = isApiError(error) ? error.fieldCode(f.path) : undefined;
             const message = fieldProblemMsg(code);

@@ -83,7 +83,6 @@ export function DraftsScreen() {
         <div className="flex flex-col gap-3">
           {items.map((draft) => {
             const name = vendorName(draft.intent.vendorId);
-            const units = draft.intent.lines.reduce((n, l) => n + l.quantity, 0);
             return (
               <Card key={draft.id} size="sm">
                 <CardContent className="flex flex-wrap items-center gap-3">
@@ -96,7 +95,6 @@ export function DraftsScreen() {
                       {t("summary", {
                         count: draft.intent.lines.length,
                         countText: formatNumber(draft.intent.lines.length),
-                        units: formatNumber(units),
                         location: locationName(draft.intent.deliveryLocationId),
                       })}
                     </span>

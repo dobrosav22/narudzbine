@@ -27,7 +27,7 @@ export function OrderProgress({ state, stageName, endedNote }: { state: OrderSta
     <ol className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-0" aria-label={t("progress")}>
       {view.steps.map(({ state: step, progress }, i) => (
         <li key={step} className="flex flex-1 items-center gap-2 sm:flex-col sm:gap-2" aria-current={progress === "current" ? "step" : undefined}>
-          <div className="flex w-full items-center">
+          <div className="flex items-center sm:w-full">
             <div className={cn("hidden h-px flex-1 sm:block", i === 0 ? "invisible" : progress === "upcoming" ? "bg-border" : "bg-success")} />
             <span
               className={cn(

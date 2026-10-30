@@ -139,8 +139,8 @@ export function CartScreen() {
           </Button>
         </EmptyState>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="flex flex-col gap-3 lg:col-span-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="flex min-w-0 flex-col gap-3 lg:col-span-2">
             {unavailableCount > 0 && (
               <Alert>
                 <TriangleAlertIcon />
@@ -148,7 +148,7 @@ export function CartScreen() {
               </Alert>
             )}
             <div className="rounded-lg border">
-              <Table className="text-sm">
+              <Table stack className="text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t("product")}</TableHead>
@@ -168,7 +168,7 @@ export function CartScreen() {
                     const pricedHere = offer && offer.pricedQuantity === line.quantity;
                     return (
                       <TableRow key={line.productId} className={check.unavailable ? "text-muted-foreground" : undefined}>
-                        <TableCell>
+                        <TableCell primary>
                           <div className="flex items-center gap-3">
                             <OfferImage assetId={offer?.product.galleryAssetIds[0] ?? snap?.imageAssetId} className="size-12" />
                             <div className="flex min-w-0 flex-col gap-1">
@@ -223,10 +223,10 @@ export function CartScreen() {
                           )}
                           {check.unavailable && <span className="font-mono tabular-nums">{formatNumber(line.quantity)}</span>}
                         </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
+                        <TableCell label={t("total")} className="text-right font-mono tabular-nums">
                           {offer && pricedHere ? formatMoney(offer.effectivePrice.lineTotal, offer.currency) : "—"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="group-data-stack/table:max-md:ml-auto">
                           <Button size="icon-sm" variant="ghost" aria-label={t("removeAria", { product: name })} onClick={() => cart.remove(line.productId)}>
                             <Trash2Icon />
                           </Button>

@@ -34,7 +34,7 @@
   "noPrice": "Bez cene",
   "quantities": "Min. / korak",
   "status": "Status",
-  "netNote": "Cene su neto, bez PDV-a.",
+  "netNote": "Cene su neto, bez PDV‑a.",
   "total": "{count, plural, one {{countText} proizvod} few {{countText} proizvoda} other {{countText} proizvoda}}",
   "page": "Strana {page}",
   "previous": "Prethodna",

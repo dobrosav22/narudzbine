@@ -19,5 +19,8 @@
   "no": "No",
   "dash": "—",
   "add": "Add",
-  "apply": "Apply"
+  "apply": "Apply",
+  "notFoundTitle": "Page not found",
+  "notFoundDescription": "This address doesn't lead anywhere. It may have been mistyped or moved.",
+  "notFoundHome": "Go to the start page"
 }

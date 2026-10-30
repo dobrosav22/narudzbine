@@ -166,7 +166,7 @@ export function AddressFields({
     <FieldGroup className="gap-4">
       {field("line1", "address-line1")}
       {field("line2", "address-line2")}
-      <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[10rem_1fr]">
         {field("postalCode", "postal-code")}
         {field("city", "address-level2")}
       </div>
@@ -232,7 +232,7 @@ export function ContactFields({
   return (
     <FieldGroup className="gap-4">
       {row("name", "text", "name")}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {row("phone", "tel", "tel", t("contactFields.phoneHint"))}
         {row("email", "email", "email")}
       </div>

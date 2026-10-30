@@ -104,7 +104,8 @@
   },
   "reason": {
     "label": "Reason",
-    "count": "{count} / {max}"
+    "count": "{count} / {max}",
+    "required": "Required, up to {max} characters."
   },
   "request": {
     "titleVendor": "{buyer} asked to cancel this order",

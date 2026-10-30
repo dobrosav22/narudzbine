@@ -5,7 +5,7 @@ Browser checks of both apps against the **local synthetic backend** — real HTT
 | Script | What it does |
 |---|---|
 | `seed.mjs <ready.json>` | Adds demo data through the public API: taxonomy, 12 priced products per country, a promotion, an agreed price, order stages, favorites, a draft and orders in every lifecycle state. |
-| `screens.mjs <ready.json>` | Logs in as vendor, buyer and platform admin and opens every web route (plus public pages); reports page errors, console errors, failed API calls and error alerts. Read-only. `ONLY=/stats` limits the routes, `SHOTS=<dir>` saves screenshots. |
+| `screens.mjs <ready.json>` | Logs in as vendor, buyer and platform admin and opens every web route (plus public pages); reports page errors, console errors, failed API calls, error alerts and pages wider than the viewport. Read-only. `ONLY=/stats` limits the routes, `SHOTS=<dir>` saves screenshots, `VIEWPORT=390x844` runs at phone size (touch below 768 px), `FULL_PAGE=1` takes full-length screenshots. |
 | `flows.mjs <ready.json>` | Clicks through the core workflow and confirms each result through the API: create + activate a product → add to cart → review → place order → messages both ways → accept → dispatch → deliver → save a shared draft. |
 | `mobile-screens.mjs <ready.json>` | Opens the main mobile screens of the Expo web export with the native bearer transport. |
 | `browser-transport-check.mjs` | Low-level check of the browser cookie/CSRF session contract. |

@@ -1,6 +1,7 @@
 {
   "mainNavigation": "Glavna navigacija",
-  "dashboard": "Pregled",
+  "closeMenu": "Zatvori meni",
+  "dashboard": "Kontrolna tabla",
   "catalogue": "Katalog",
   "orders": "Porudžbine",
   "buyers": "Kupci",
@@ -15,7 +16,9 @@
   "favorites": "Omiljeno",
   "vendors": "Dobavljači",
   "organizations": "Organizacije",
-  "planRequests": "Zahtevi za plan",
+  "planRequests": "Zahtevi za paket",
   "audit": "Dnevnik aktivnosti",
-  "account": "Nalog"
+  "account": "Nalog",
+  "menu": "Meni",
+  "toggleMenu": "Prikaži ili sakrij meni"
 }

@@ -19,5 +19,8 @@
   "no": "Ne",
   "dash": "—",
   "add": "Dodaj",
-  "apply": "Primeni"
+  "apply": "Primeni",
+  "notFoundTitle": "Stranica nije pronađena",
+  "notFoundDescription": "Ova adresa ne vodi nikuda. Možda je pogrešno upisana ili premeštena.",
+  "notFoundHome": "Idi na početnu stranicu"
 }

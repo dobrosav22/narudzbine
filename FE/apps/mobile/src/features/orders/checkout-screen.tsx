@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, ScrollView, View } from 'react-native';
+import { Alert, BackHandler, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { Check, MapPin } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import {
   formatNumber,
   IncompleteIntentError,
   isApiError,
+  isLargeQuantity,
   isUncertainOutcome,
   offerKeys,
   orderKeys,
@@ -207,6 +208,17 @@ export function CheckoutScreen() {
       setBusy(null);
     }
   };
+  // Unusually large quantities are confirmed first (QA-016); the backend sets no maximum.
+  const placeOrder = () => {
+    const large = reviewed?.review.lines.filter((l) => isLargeQuantity(l.quantity)) ?? [];
+    if (large.length === 0) return void submit(false);
+    const list = large.map((l) => `${l.name}: ${formatNumber(l.quantity)} ${l.unitName}`).join('\n');
+    Alert.alert(t('largeTitle'), `${t('largeDescription')}\n\n${list}`, [
+      { text: t('largeBack'), style: 'cancel' },
+      { text: t('largeConfirm'), onPress: () => void submit(false) },
+    ]);
+  };
+
   const submit = async (retry: boolean) => {
     setBusy('submit');
     setError(null);
@@ -238,7 +250,8 @@ export function CheckoutScreen() {
       {state.draft && <AppText className="text-sm text-muted-foreground">{t('viaDraft')}</AppText>}
       {conflict && <DraftConflictPanel scope={scope} onDone={(text) => { setConflict(false); setReviewed(null); if (text) setNotice(text); }} />}
       {notice && <Notice text={notice} />}
-      {errorDescription && (
+      {/* An uncertain outcome is already explained by the pending notice above, with its action (QA-026). */}
+      {errorDescription && !(uncertain && pending) && (
         <View accessibilityRole="alert" className="gap-1 rounded-lg border border-border bg-card p-3">
           <AppText weight="medium" className={`text-sm ${uncertain ? 'text-foreground' : 'text-destructive'}`}>
             {uncertain ? t('uncertainTitle') : termsChange(error) ? t('termsChangedTitle') : t('problemTitle')}
@@ -388,7 +401,7 @@ export function CheckoutScreen() {
             </Button>
           )}
           {!expired && canSubmit && (
-            <Button loading={busy === 'submit'} disabled={busy !== null || !!pending} onPress={() => void submit(false)}>
+            <Button loading={busy === 'submit'} disabled={busy !== null || !!pending} onPress={placeOrder}>
               {changed.size > 0 ? t('confirmChanged') : t('placeOrder')}
             </Button>
           )}

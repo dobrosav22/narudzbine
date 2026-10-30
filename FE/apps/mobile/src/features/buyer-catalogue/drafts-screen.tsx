@@ -110,7 +110,6 @@ export function DraftsScreen() {
       }
       renderItem={({ item: draft }) => {
         const name = vendorName(draft.intent.vendorId);
-        const units = draft.intent.lines.reduce((n, l) => n + l.quantity, 0);
         return (
           <View className="gap-2 rounded-xl border border-border bg-card p-4">
             <View className="flex-row flex-wrap items-center gap-2">
@@ -120,7 +119,7 @@ export function DraftsScreen() {
               {!name && <Badge variant="warning">{t('notOrderable')}</Badge>}
             </View>
             <AppText className="text-sm text-muted-foreground">
-              {t('summary', { count: draft.intent.lines.length, countText: formatNumber(draft.intent.lines.length), units: formatNumber(units), location: locationName(draft.intent.deliveryLocationId) })}
+              {t('summary', { count: draft.intent.lines.length, countText: formatNumber(draft.intent.lines.length), location: locationName(draft.intent.deliveryLocationId) })}
             </AppText>
             {draft.intent.note ? <AppText className="text-sm text-foreground">{draft.intent.note}</AppText> : null}
             <AppText className="text-xs text-muted-foreground">{t('updated', { when: formatDateTime(draft.updatedAt) })}</AppText>

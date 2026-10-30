@@ -72,5 +72,10 @@
   }
   html {
     @apply font-sans;
+    /* Native scrollbars and form controls follow the theme (QA-025). */
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
 }

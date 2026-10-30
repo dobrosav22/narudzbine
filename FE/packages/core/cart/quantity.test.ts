@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isValidQuantity, MAX_QUANTITY, maxQuantity, quantityIssue, snapQuantity, stepQuantity } from './quantity';
+import { isLargeQuantity, isValidQuantity, MAX_QUANTITY, maxQuantity, readTypedQuantity, quantityIssue, snapQuantity, stepQuantity } from './quantity';
 import { compareMoney, sumMoney } from '../money';
 
 const packOf6 = { minimumQuantity: 6, quantityStep: 6 };
@@ -34,6 +34,23 @@ test('step moves between valid quantities', () => {
   assert.equal(stepQuantity(7, packOf6, 1), 12, 'off-step up snaps to the next valid');
   assert.equal(stepQuantity(13, packOf6, -1), 12, 'off-step down lands on the valid one below');
   assert.equal(stepQuantity(3, packOf6, -1), 6);
+});
+
+test('typed quantities: only plain digits count, never a silently dropped separator (QA-014)', () => {
+  assert.deepEqual(readTypedQuantity('6.5', packOf6), { kind: 'NOT_WHOLE' }, 'not 65 → 66');
+  assert.deepEqual(readTypedQuantity('1,5', packOf6), { kind: 'NOT_WHOLE' });
+  assert.deepEqual(readTypedQuantity('1.000', packOf6), { kind: 'NOT_WHOLE' }, 'a thousand in Serbian, 1.0 in English');
+  assert.deepEqual(readTypedQuantity('-6', packOf6), { kind: 'NOT_WHOLE' });
+  assert.deepEqual(readTypedQuantity('abc', packOf6), { kind: 'NOT_WHOLE' });
+  assert.deepEqual(readTypedQuantity('  ', packOf6), { kind: 'EMPTY' });
+  assert.deepEqual(readTypedQuantity(' 12 ', packOf6), { kind: 'OK', quantity: 12, adjusted: false });
+  assert.deepEqual(readTypedQuantity('7', packOf6), { kind: 'OK', quantity: 12, adjusted: true }, 'snapped, and says so (QA-015)');
+  assert.deepEqual(readTypedQuantity('0', packOf6), { kind: 'OK', quantity: 6, adjusted: true });
+});
+
+test('large quantities start at 1000 (QA-016)', () => {
+  assert.equal(isLargeQuantity(999), false);
+  assert.equal(isLargeQuantity(1000), true);
 });
 
 test('money sums exactly as cents and compares', () => {

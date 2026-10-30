@@ -144,7 +144,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
         <DialogDescription>{t("description")}</DialogDescription>
       </DialogHeader>
       <FieldGroup>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="invite-type">{t("type")}</FieldLabel>
             <Select value={type} onValueChange={(v) => setType(v as Organization["type"])}>

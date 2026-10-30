@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 export function OrderLines({ order }: { order: Order }) {
   const t = useTranslations("orders");
   return (
-    <Table className="text-sm">
+    <Table stack className="text-sm">
       <TableHeader>
         <TableRow>
           <TableHead>{t("product")}</TableHead>
@@ -24,7 +24,7 @@ export function OrderLines({ order }: { order: Order }) {
       <TableBody>
         {order.lines.map((line, i) => (
           <TableRow key={`${line.productId}-${i}`}>
-            <TableCell className="whitespace-normal">
+            <TableCell primary>
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium">{line.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
@@ -32,13 +32,13 @@ export function OrderLines({ order }: { order: Order }) {
                 </span>
               </div>
             </TableCell>
-            <TableCell className="text-right font-mono tabular-nums whitespace-nowrap">
+            <TableCell label={t("qty")} className="text-right font-mono tabular-nums whitespace-nowrap">
               {formatNumber(line.quantity)} <span className="text-muted-foreground">{line.unitName}</span>
             </TableCell>
-            <TableCell className="text-right align-top">
+            <TableCell label={t("unitPrice")} className="text-right">
               <UnitPrice line={line} currency={order.currency} />
             </TableCell>
-            <TableCell className="text-right font-mono tabular-nums">{formatMoney(line.price.lineTotal, order.currency)}</TableCell>
+            <TableCell label={t("lineTotal")} className="text-right font-mono tabular-nums">{formatMoney(line.price.lineTotal, order.currency)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -65,12 +65,12 @@ function UnitPrice({ line, currency }: { line: ReviewedLine; currency: Order["cu
   // The price before the promotion: the agreed price wins over the tiered/base "normal" price.
   const beforePromotion = p.agreedUnitPrice ?? p.normalUnitPrice;
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-1 group-data-stack/table:max-md:items-start">
       <span className="font-mono tabular-nums">{formatMoney(p.finalUnitPrice, currency)}</span>
       {beforePromotion !== p.finalUnitPrice && (
         <span className="font-mono text-xs text-muted-foreground line-through tabular-nums">{formatMoney(beforePromotion, currency)}</span>
       )}
-      <div className="flex flex-wrap justify-end gap-1">
+      <div className="flex flex-wrap justify-end gap-1 group-data-stack/table:max-md:justify-start">
         {p.agreedUnitPrice !== null && <Badge variant="info">{t("agreedPrice")}</Badge>}
         {promo && (
           <Badge variant="success">

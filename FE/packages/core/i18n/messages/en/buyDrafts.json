@@ -7,7 +7,7 @@
   "emptyDescription": "Save a cart as a draft to share it with your team or finish it later.",
   "disconnectedVendor": "Vendor no longer connected",
   "notOrderable": "Can't be ordered",
-  "summary": "{count, plural, one {# product} other {{countText} products}} · {units} units · {location}",
+  "summary": "{count, plural, one {# product} other {{countText} products}} · {location}",
   "updated": "Last saved {when}",
   "openInCart": "Open in cart",
   "reviewAndSubmit": "Review and submit",

@@ -236,7 +236,7 @@ export function VendorCatalogueScreen() {
       ) : (
         <>
           <div className="rounded-lg border">
-            <Table className="text-sm">
+            <Table stack className="text-sm">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
@@ -265,8 +265,9 @@ export function VendorCatalogueScreen() {
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox aria-label={t("select", { name: p.name })} checked={selectedIds.has(p.id)} onCheckedChange={(on) => toggle(p.id, on === true)} />
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{p.sku}</TableCell>
-                    <TableCell>
+                    {/* SKUs are up to 64 characters: let them break instead of squeezing the name. */}
+                    <TableCell className="min-w-28 font-mono text-xs whitespace-normal [overflow-wrap:anywhere]">{p.sku}</TableCell>
+                    <TableCell primary>
                       <div className="flex items-center gap-3">
                         <ProductThumb assetId={p.galleryAssetIds[0]} className="size-10" />
                         <div className="flex min-w-0 flex-col gap-1">
@@ -288,7 +289,7 @@ export function VendorCatalogueScreen() {
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{(p.categoryId && names.category.get(p.categoryId)) || "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell label={t("basePrice")} className="text-right whitespace-normal">
                       <PriceCell pricing={pricingResults[i]?.data} pending={!!pricingResults[i]?.isPending} unit={p.unitId ? names.unit.get(p.unitId) : undefined} />
                     </TableCell>
                     <TableCell className="hidden text-right font-mono tabular-nums lg:table-cell">
@@ -345,9 +346,10 @@ function PriceCell({ pricing, pending, unit }: { pricing: Pricing | undefined; p
   if (pending) return <Skeleton className="ml-auto h-4 w-16" />;
   if (!pricing?.basePrice) return <span className="text-muted-foreground">{t("noPrice")}</span>;
   return (
+    // The amount stays on one line; a long unit name wraps instead of widening the column.
     <span className="font-mono tabular-nums">
-      {formatMoney(pricing.basePrice, pricing.currency)}
-      {unit && <span className="font-sans text-muted-foreground"> / {unit}</span>}
+      <span className="whitespace-nowrap">{formatMoney(pricing.basePrice, pricing.currency)}</span>
+      {unit && <span className="font-sans text-muted-foreground [overflow-wrap:anywhere]"> / {unit}</span>}
     </span>
   );
 }

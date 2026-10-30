@@ -93,5 +93,6 @@
     "PASSWORD_REJECTED": "Choose a different password: 15–128 characters, not a common or leaked one.",
     "DUPLICATE_NAME": "Already used.",
     "DUPLICATE_SKU": "Already used by another product."
-  }
+  },
+  "rateLimitedWait": "Too many attempts. Try again in about {minutes, plural, one {# minute} other {# minutes}}."
 }

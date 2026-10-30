@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HeartIcon, MinusIcon, PlusIcon, ShoppingCartIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -13,6 +13,7 @@ import {
   isValidQuantity,
   offerStockStatus,
   priceSource,
+  readTypedQuantity,
   snapQuantity,
   stepQuantity,
   type Currency,
@@ -126,7 +127,9 @@ export function FavoriteButton({ offer, size = "icon-sm" }: { offer: Offer; size
 
 /**
  * −/+ quantity input that only produces valid quantities for the rule (minimum, then whole
- * steps). Typed input is committed on blur/Enter and snapped up to the next valid quantity.
+ * steps). Typed input is committed on blur/Enter: anything but a whole number is refused with a
+ * message (never silently stripped), and a number off the rule is moved up to the next valid
+ * quantity with a note saying why.
  */
 export function QuantityStepper({
   value,
@@ -142,42 +145,63 @@ export function QuantityStepper({
   className?: string;
 }) {
   const t = useTranslations("product");
+  const noteId = useId();
   const [draft, setDraft] = useState<string | null>(null);
+  const [note, setNote] = useState<{ error: boolean; text: string } | null>(null);
   const commit = () => {
     if (draft === null) return;
-    const next = snapQuantity(Number(draft), rule);
+    const typed = readTypedQuantity(draft, rule);
     setDraft(null);
-    if (next !== value) onChange(next);
+    if (typed.kind === "EMPTY") return setNote(null);
+    if (typed.kind === "NOT_WHOLE") return setNote({ error: true, text: t("quantityWhole") });
+    const values = { qty: formatNumber(typed.quantity), min: formatNumber(rule.minimumQuantity), step: formatNumber(rule.quantityStep) };
+    setNote(typed.adjusted ? { error: false, text: rule.quantityStep > 1 ? t("quantityAdjustedStep", values) : t("quantityAdjustedMin", values) } : null);
+    if (typed.quantity !== value) onChange(typed.quantity);
+  };
+  const step = (direction: 1 | -1) => {
+    setNote(null);
+    onChange(stepQuantity(value, rule, direction));
   };
   const atMinimum = value <= rule.minimumQuantity;
   return (
-    <InputGroup className={className ?? "w-36"}>
-      <InputGroupAddon>
-        <InputGroupButton size="icon-xs" aria-label={t("decrease", { label })} disabled={atMinimum} onClick={() => onChange(stepQuantity(value, rule, -1))}>
-          <MinusIcon />
-        </InputGroupButton>
-      </InputGroupAddon>
-      <InputGroupInput
-        inputMode="numeric"
-        aria-label={label}
-        aria-invalid={!isValidQuantity(value, rule) || undefined}
-        className="text-center font-mono tabular-nums"
-        value={draft ?? String(value)}
-        onChange={(e) => setDraft(e.target.value.replace(/[^\d]/g, "").slice(0, 10))}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            commit();
-          }
-        }}
-      />
-      <InputGroupAddon align="inline-end">
-        <InputGroupButton size="icon-xs" aria-label={t("increase", { label })} onClick={() => onChange(stepQuantity(value, rule, 1))}>
-          <PlusIcon />
-        </InputGroupButton>
-      </InputGroupAddon>
-    </InputGroup>
+    <div className={cn("flex flex-col gap-1", className ?? "w-36")}>
+      <InputGroup>
+        <InputGroupAddon>
+          <InputGroupButton size="icon-xs" aria-label={t("decrease", { label })} disabled={atMinimum} onClick={() => step(-1)}>
+            <MinusIcon />
+          </InputGroupButton>
+        </InputGroupAddon>
+        <InputGroupInput
+          inputMode="numeric"
+          aria-label={label}
+          aria-invalid={!isValidQuantity(value, rule) || note?.error || undefined}
+          aria-describedby={note ? noteId : undefined}
+          className="text-center font-mono tabular-nums"
+          value={draft ?? String(value)}
+          onChange={(e) => {
+            setNote(null);
+            setDraft(e.target.value.slice(0, 12));
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            }
+          }}
+        />
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton size="icon-xs" aria-label={t("increase", { label })} onClick={() => step(1)}>
+            <PlusIcon />
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
+      {note && (
+        <p id={noteId} role={note.error ? "alert" : "status"} className={cn("text-xs", note.error ? "text-destructive" : "text-muted-foreground")}>
+          {note.text}
+        </p>
+      )}
+    </div>
   );
 }
 

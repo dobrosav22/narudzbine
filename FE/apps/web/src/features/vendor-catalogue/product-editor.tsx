@@ -238,7 +238,7 @@ function ProductForm({
             <ArrowLeftIcon />
           </Link>
         </Button>
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 basis-56 flex-col">
           <h1 className="truncate text-2xl font-semibold tracking-tight">{isNew ? t("newTitle") : baseline.product!.name}</h1>
           {!isNew && <p className="font-mono text-xs text-muted-foreground">{baseline.product!.sku}</p>}
         </div>
@@ -268,7 +268,7 @@ function ProductForm({
         !planLimit && <CatalogueFormError error={error} />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           <Card>
             <CardHeader>
@@ -281,7 +281,7 @@ function ProductForm({
                   <Input id="name" value={draft.name} maxLength={200} onChange={(e) => set("name", e.target.value)} />
                   <FieldError>{err(errors.name) ?? serverField("name")}</FieldError>
                 </Field>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field data-invalid={!!(errors.sku || serverField("sku") || isApiError(error, "SKU_RESERVED")) || undefined}>
                     <FieldLabel htmlFor="sku">{t("sku")}</FieldLabel>
                     <Input id="sku" className="font-mono" value={draft.sku} maxLength={64} autoComplete="off" onChange={(e) => set("sku", e.target.value)} />
@@ -333,7 +333,7 @@ function ProductForm({
                     <FieldError>{err(errors.tagIds)}</FieldError>
                   </Field>
                 )}
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field>
                     <FieldLabel htmlFor="unit">{t("unit")}</FieldLabel>
                     <Select value={draft.unitId || NONE} disabled={frozen} onValueChange={(v) => set("unitId", v === NONE ? "" : v)}>
@@ -366,7 +366,7 @@ function ProductForm({
                     <FieldError>{err(errors.packDescription)}</FieldError>
                   </Field>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field data-invalid={!!errors.minimumQuantity || undefined}>
                     <FieldLabel htmlFor="minimum">{t("minimumQuantity")}</FieldLabel>
                     <Input id="minimum" inputMode="numeric" className="font-mono" value={draft.minimumQuantity} onChange={(e) => set("minimumQuantity", e.target.value)} />
@@ -495,7 +495,7 @@ function EditorSkeleton() {
   return (
     <div className="flex flex-col gap-6" aria-busy="true" aria-label={t("loading")}>
       <Skeleton className="h-9 w-1/3" />
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           <Skeleton className="h-72 w-full" />
           <Skeleton className="h-56 w-full" />

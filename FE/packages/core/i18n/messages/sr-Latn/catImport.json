@@ -3,7 +3,7 @@
   "subtitle": "Pravi nove neaktivne ili aktivne proizvode u jednom koraku. Postojeći proizvodi se nikad ne menjaju.",
   "formatTitle": "Format fajla",
   "formatDescription": "UTF-8 CSV sa zaglavljem. Kolone sku i name su obavezne; ostale su opcione i mogu biti bilo kojim redom:",
-  "formatNotes": "unitId, categoryId i tagIds sadrže ID-jeve vaših jedinica, kategorija i oznaka (tagIds kao JSON lista, npr. [\"…\"]). basePrice je neto cena, npr. 12.50. activate je true ili false; dok je praćenje zaliha uključeno, uvezeni proizvodi ne mogu biti aktivirani. Najviše 1.000 redova i 5 MB; 3 provere na sat.",
+  "formatNotes": "unitId, categoryId i tagIds sadrže ID-jeve vaših jedinica, kategorija i oznaka; kopirajte ih na stranici Kategorije, oznake i jedinice (tagIds kao JSON lista, npr. [\"…\"]). basePrice je neto cena, npr. 12.50. activate je true ili false; dok je praćenje zaliha uključeno, uvezeni proizvodi ne mogu biti aktivirani. Najviše 1.000 redova i 5 MB; 3 provere na sat.",
   "chooseFile": "Izaberite CSV fajl",
   "fileAria": "CSV fajl",
   "fileChosen": "{name} · {size}",

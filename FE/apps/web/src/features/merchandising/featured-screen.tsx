@@ -31,7 +31,7 @@ export function FeaturedScreen() {
         <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
       <CatalogueNav />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>{t("count", { count: featured.length, countText: formatNumber(featured.length) })}</CardTitle>

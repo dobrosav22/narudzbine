@@ -447,7 +447,7 @@ function PricingStock({ org, accessId, productId }: { org: Organization; accessI
   const pricing = useSupportPricing(accessId, productId);
   const stock = useSupportStock(accessId, productId);
   return (
-    <div className="grid gap-4 py-2 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 py-2 md:grid-cols-2">
       <div className="flex flex-col gap-2">
         <h4 className="text-sm font-medium">{t("pricing")}</h4>
         {pricing.isError ? (

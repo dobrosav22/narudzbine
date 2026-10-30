@@ -93,5 +93,6 @@
     "PASSWORD_REJECTED": "Izaberite drugu lozinku: 15–128 znakova, ne uobičajenu ili procurelu.",
     "DUPLICATE_NAME": "Već je zauzeto.",
     "DUPLICATE_SKU": "Već ga koristi drugi proizvod."
-  }
+  },
+  "rateLimitedWait": "Previše pokušaja. Pokušajte ponovo za oko {minutes, plural, one {# minut} few {# minuta} other {# minuta}}."
 }
